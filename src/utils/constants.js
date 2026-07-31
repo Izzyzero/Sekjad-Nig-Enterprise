@@ -1,0 +1,2 @@
+export const APP_NAME = 'SEKJAD NIG ENTERPRISES'
+export const DEFAULT_PAGE_SIZE = 12

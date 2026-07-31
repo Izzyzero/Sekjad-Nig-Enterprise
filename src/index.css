@@ -1,0 +1,68 @@
+@import "tailwindcss";
+
+@theme {
+    /* Primary Colors */
+  --color-primary: #E67E22;      /* Burnt Orange */
+  --color-secondary: #1F2937;    /* Dark Charcoal */
+  --color-accent: #F8F5F2;       /* Warm Cream */
+  --color-orange: #E67E22;
+  --color-charcoal: #1F2937;
+  --color-cream: #F8F5F2;
+  --color-ink: #111827;
+  --font-display: ui-serif, Georgia, Cambria, "Times New Roman", serif;
+
+  /* Neutral Colors */
+  --color-background: #FFFFFF;   /* White */
+  --color-text: #111827;         /* Dark Gray */
+
+  /* Optional Shades */
+  --color-primary-light: #F2994A;
+  --color-primary-dark: #C76B1A;
+
+  --color-secondary-light: #374151;
+  --color-secondary-dark: #111827;
+
+  --color-border: #E5E7EB;
+  --color-muted: #6B7280;
+  --color-success: #22C55E;
+  --color-warning: #F59E0B;
+  --color-danger: #EF4444;
+}
+
+
+/* *{
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+} */
+html {
+  scroll-behavior: smooth;
+}
+
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes scroll-down {
+  from {
+    transform: translateY(-100%);
+  }
+  to {
+    transform: translateY(200%);
+  }
+}
+
+@utility animate-fade-up {
+  animation: fade-up 700ms ease-out forwards;
+}
+
+@utility animate-scroll-down {
+  animation: scroll-down 1.8s ease-in-out infinite;
+}
