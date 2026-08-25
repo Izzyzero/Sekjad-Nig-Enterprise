@@ -6,7 +6,9 @@ import { Link } from 'react-router-dom'
 import { Eye, EyeOff } from 'lucide-react'
 import { FcGoogle } from 'react-icons/fc'
 import { AuthLayout } from '../../../components/auth/AuthLayout'
-import { fieldClass, FieldError } from '../../../components/auth/formHelpers'
+import { fieldClass, FieldError } from '../../../components/auth/FormHelpers'
+import { useAuth } from '../../../hooks/useAuth'
+import { getApiError } from '../../../services/api'
 
 const PHONE_REGEX = /^[7-9][0-9]{9}$/ // NG local number, no leading 0/+234
 
@@ -37,9 +39,11 @@ const registerSchema = z
   })
 
 export function Register() {
+  const { register: createAccount } = useAuth()
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirm, setShowConfirm] = useState(false)
   const [submitted, setSubmitted] = useState(false)
+  const [authError, setAuthError] = useState('')
 
   const {
     register,
@@ -60,10 +64,22 @@ export function Register() {
   })
 
   const onSubmit = async (data) => {
-    // Replace with your real signup call
-    await new Promise((resolve) => setTimeout(resolve, 900))
-    console.log('Register payload:', data)
-    setSubmitted(true)
+    setAuthError('')
+    const details = {
+      firstName: data.firstName,
+      lastName: data.lastName,
+      email: data.email,
+      password: data.password,
+      confirmPassword: data.confirmPassword,
+      phone: `+234${data.phone}`,
+      subscribe: data.subscribe,
+    }
+    try {
+      await createAccount({ ...details, phoneNumber: data.phone })
+      setSubmitted(true)
+    } catch (error) {
+      setAuthError(getApiError(error, 'Unable to create your account. Please try again.'))
+    }
   }
 
   return (
@@ -76,12 +92,21 @@ export function Register() {
           <p className="font-display text-orange mb-2 text-2xl font-medium">Welcome to Sekjad!</p>
           <p className="text-sm text-ink/55">
             Your account has been created. Check your email to verify and get started.
+            <Link to="/login" className="text-orange font-semibold hover:underline">
+              Log in
+            </Link>
           </p>
         </div>
       ) : (
         <>
           <h2 className="font-display text-ink mb-2 text-3xl font-normal sm:text-4xl">Create your account</h2>
           <p className="mb-8 text-sm text-ink/50">Join thousands of customers enjoying premium Nigerian fabrics</p>
+
+          {authError && (
+            <div className="mb-5 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
+              {authError}
+            </div>
+          )}
 
           <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-4">
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">

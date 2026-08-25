@@ -7,6 +7,8 @@ import { Eye, EyeOff } from 'lucide-react'
 import { FcGoogle } from 'react-icons/fc'
 import { AuthLayout } from '../../../components/auth/AuthLayout'
 import { fieldClass, FieldError } from '../../../components/auth/FormHelpers'
+import { useAuth } from '../../../hooks/useAuth'
+import { getApiError } from '../../../services/api'
 
 const loginSchema = z.object({
   email: z.string().trim().min(1, 'Enter your email').email('Enter a valid email address'),
@@ -16,6 +18,7 @@ const loginSchema = z.object({
 
 export function Login() {
   const navigate = useNavigate()
+  const { login } = useAuth()
   const [showPassword, setShowPassword] = useState(false)
   const [authError, setAuthError] = useState('')
 
@@ -31,12 +34,11 @@ export function Login() {
   const onSubmit = async (data) => {
     setAuthError('')
     try {
-      // Replace with your real auth call
-      await new Promise((resolve) => setTimeout(resolve, 900))
-      console.log('Login payload:', data)
-      navigate('/')
-    } catch {
-      setAuthError('Incorrect email or password. Please try again.')
+      const credentials = { email: data.email, password: data.password }
+      await login(credentials)
+      navigate('/home', { replace: true })
+    } catch (error) {
+      setAuthError(getApiError(error, 'Incorrect email or password. Please try again.'))
     }
   }
 

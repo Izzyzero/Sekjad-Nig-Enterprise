@@ -2,6 +2,11 @@ import { useEffect, useRef, useState } from 'react'
 import { MapPin, Phone, Mail, Clock } from 'lucide-react'
 import { FaFacebookF, FaInstagram, FaTiktok, FaWhatsapp } from 'react-icons/fa'
 import { Link } from 'react-router-dom'
+import { useAuth } from '../../hooks/useAuth'
+import { useProducts } from '../../hooks/useProducts'
+import { useCart } from '../../hooks/useCart'
+import { useWishlist } from '../../hooks/useWishlist'
+import { formatCurrency } from '../../utils/formatCurrency'
 import {
   ArrowLeft,
   ArrowRight,
@@ -20,7 +25,6 @@ import Brocade from '../../assets/images/Brocade.jpg'
 import sego from '../../assets/images/sego.jpg'
 import lace from '../../assets/images/lace.jpg'
 
-// Each collection card links to its own shop category
 const COLLECTION_ROUTES = {
   'Lace Fabrics':      '/shop?category=lace',
   'Aso Oke':           '/shop?category=aso-oke',
@@ -30,7 +34,29 @@ const COLLECTION_ROUTES = {
   'Bridal Wears':      '/shop?category=bridal',
 }
 
+const GUEST_PRODUCTS = [
+  { id: 'guest-royal-blue-brocade', name: 'Royal Blue Brocade', price: 30000, compareAtPrice: 35000, image: 'https://i.pinimg.com/1200x/e1/f0/e9/e1f0e962fce266ae8745f73c5c0284e3.jpg' },
+  { id: 'guest-gold-beaded-lace', name: 'Gold Beaded Lace', price: 50000, compareAtPrice: null, image: 'https://i.pinimg.com/1200x/b9/4e/54/b94e54ecf54f780dffd36325ef247542.jpg' },
+  { id: 'guest-3d-sego', name: '3D Sego', price: 40000, compareAtPrice: null, image: 'https://i.pinimg.com/1200x/dd/c6/0d/ddc60d6a5d42c1424291bc13d5a6cd65.jpg' },
+  { id: 'guest-swiss-lace-set', name: 'Swiss Lace Set', price: 65000, compareAtPrice: null, image: 'https://i.pinimg.com/1200x/3b/8c/1c/3b8c1c7103ce2f9e3da28ca26ddb5145.jpg' },
+  { id: 'guest-deep-navy-senator', name: 'Deep Navy Senator', price: 18500, compareAtPrice: null, image: 'https://i.pinimg.com/1200x/89/57/3d/89573de8bb6ce6ce53190277715c56ca.jpg' },
+  { id: 'guest-vintage-aso-oke', name: 'Vintage Aso Oke', price: 35000, compareAtPrice: 95000, image: 'https://i.pinimg.com/736x/e1/f2/e8/e1f2e8d9246bff8d9a245399a08e8ffe.jpg' },
+]
+
 export function LandingPage() {
+  const { isAuthenticated, user } = useAuth()
+  const { data: featuredData, isLoading: featuredLoading, isError: featuredError } = useProducts(
+    { isFeatured: true, limit: 6, sort: '-createdAt' },
+    { enabled: isAuthenticated },
+  )
+  const { data: latestData } = useProducts(
+    { limit: 5, sort: '-createdAt' },
+    { enabled: isAuthenticated },
+  )
+  const { addToCart } = useCart()
+  const { isWishlisted, toggle: toggleWishlist } = useWishlist()
+  const featuredProducts = isAuthenticated ? (featuredData?.items ?? []) : GUEST_PRODUCTS
+  const latestProducts = isAuthenticated ? (latestData?.items ?? []) : GUEST_PRODUCTS.slice(0, 5)
 
   const collections = [
     { name: 'Lace Fabrics',      tagline: 'French & Swiss elegance',      img: lace    },
@@ -41,15 +67,6 @@ export function LandingPage() {
     { name: 'Bridal Wears',      tagline: 'Your perfect wedding vision',   img: 'https://i.pinimg.com/1200x/fa/bb/21/fabb21f89c9c1298e47ae5f7b4eba717.jpg'  },
   ]
 
-  const products = [
-    { name: 'Royal Blue Brocade', price: '₦30,000', original: '₦35,000', badge: 'Best Seller', badgeBg: '#E67E22', img: 'https://i.pinimg.com/1200x/e1/f0/e9/e1f0e962fce266ae8745f73c5c0284e3.jpg' },
-    { name: 'Gold Beaded Lace',   price: '₦50,000', original: null,       badge: 'New',         badgeBg: '#1F2937', img: 'https://i.pinimg.com/1200x/b9/4e/54/b94e54ecf54f780dffd36325ef247542.jpg' },
-    { name: '3D Sego',            price: '₦40,000', original: null,       badge: 'Sale',        badgeBg: '#dc2626', img: 'https://i.pinimg.com/1200x/dd/c6/0d/ddc60d6a5d42c1424291bc13d5a6cd65.jpg' },
-    { name: 'Swiss Lace Set',     price: '₦65,000', original: null,       badge: 'Premium',     badgeBg: '#7c3aed', img: 'https://i.pinimg.com/1200x/3b/8c/1c/3b8c1c7103ce2f9e3da28ca26ddb5145.jpg' },
-    { name: 'Deep Navy Senator',  price: '₦18,500', original: null,       badge: null,          badgeBg: '',        img: 'https://i.pinimg.com/1200x/89/57/3d/89573de8bb6ce6ce53190277715c56ca.jpg' },
-    { name: 'Vintage Aso Oke',    price: '₦35,000', original: '₦95,000', badge: 'Exclusive',   badgeBg: '#b45309', img: 'https://i.pinimg.com/736x/e1/f2/e8/e1f2e8d9246bff8d9a245399a08e8ffe.jpg' },
-  ]
-
   const promises = [
     { title: 'Premium Quality',    description: 'Every yard is hand-selected by our master fabric curators.',     icon: Gem          },
     { title: 'Authentic Sourcing', description: 'Direct from master weavers and mills across Nigeria.',           icon: Leaf         },
@@ -58,9 +75,9 @@ export function LandingPage() {
   ]
 
   const testimonials = [
-    { name: 'Adaeze Okonkwo',   location: 'Lagos, Nigeria',         text: 'Sekjad transformed my wedding day. The bridal lace was absolutely stunning and the quality was truly unmatched.',     img: 'https://images.unsplash.com/photo-1783606599598-1a2ea0c8f1e5?w=120&h=120&fit=crop&auto=format&q=80' },
-    { name: 'Chisom Eze',       location: 'Abuja, Nigeria',         text: 'I have ordered George fabric from Sekjad for three years. The quality and service are consistently excellent.',        img: 'https://images.unsplash.com/photo-1687052093309-7a14efa58ecb?w=120&h=120&fit=crop&auto=format&q=80' },
-    { name: 'Folake Babatunde', location: 'Port Harcourt, Nigeria', text: 'Their Aso Oke collection is extraordinary. My order arrived quickly and received so many compliments.',               img: 'https://images.unsplash.com/photo-1651616292466-8cfdac43e8b5?w=120&h=120&fit=crop&auto=format&q=80' },
+    { name: 'Adaeze Okonkwo',   location: 'Lagos, Nigeria',         text: 'Sekjad transformed my wedding day. The bridal lace was absolutely stunning and the quality was truly unmatched.',  img: 'https://images.unsplash.com/photo-1783606599598-1a2ea0c8f1e5?w=120&h=120&fit=crop&auto=format&q=80' },
+    { name: 'Chisom Eze',       location: 'Abuja, Nigeria',         text: 'I have ordered George fabric from Sekjad for three years. The quality and service are consistently excellent.',     img: 'https://images.unsplash.com/photo-1687052093309-7a14efa58ecb?w=120&h=120&fit=crop&auto=format&q=80' },
+    { name: 'Folake Babatunde', location: 'Port Harcourt, Nigeria', text: 'Their Aso Oke collection is extraordinary. My order arrived quickly and received so many compliments.',            img: 'https://images.unsplash.com/photo-1651616292466-8cfdac43e8b5?w=120&h=120&fit=crop&auto=format&q=80' },
   ]
 
   const SOCIAL_LINKS = [
@@ -71,9 +88,7 @@ export function LandingPage() {
   ]
 
   const [menuOpen, setMenuOpen] = useState(false)
-  const [cart, setCart] = useState(0)
   const [hoveredCollection, setHoveredCollection] = useState(null)
-  const [wishlist, setWishlist] = useState(new Set())
   const [activeTestimonial, setActiveTestimonial] = useState(0)
   const [testimonialChanging, setTestimonialChanging] = useState(false)
   const [whatsAppVisible, setWhatsAppVisible] = useState(false)
@@ -81,11 +96,7 @@ export function LandingPage() {
   const [contactSubmitted, setContactSubmitted] = useState(false)
   const productScroller = useRef(null)
 
-  const addToCart = () => setCart((count) => count + 1)
   const scrollProducts = (direction) => productScroller.current?.scrollBy({ left: direction * 330, behavior: 'smooth' })
-  const toggleWishlist = (index) => setWishlist((current) =>
-    ((next) => (next.has(index) ? next.delete(index) : next.add(index), next))(new Set(current))
-  )
   const changeTestimonial = (index) => {
     if (index !== activeTestimonial) {
       setTestimonialChanging(true)
@@ -119,26 +130,29 @@ export function LandingPage() {
 
   const testimonial = testimonials[activeTestimonial]
 
+  // Derived route helpers — single source of truth for auth-conditional links
+  const shopRoute      = (path) => isAuthenticated ? path : '/register'
+  const productRoute   = (id) => isAuthenticated ? `/shop/product/${id}` : '/register'
+
   return (
     <div className="min-h-screen bg-white">
       {/* Announcement bar */}
-      <div className="bg-charcoal fixed inset-x-0 top-0 z-50 px-4 py-2 text-center text-xs tracking-wide text-white">
+      {/* <div className="bg-charcoal fixed inset-x-0 top-0 z-50 px-4 py-2 text-center text-xs tracking-wide text-white">
         <span className="hidden opacity-80 sm:inline">🎁 Free delivery on orders above </span>
         <span className="sm:hidden opacity-80">🎁 Free delivery above </span>
         <span className="text-orange font-semibold">₦50,000</span>
         <span className="hidden opacity-80 sm:inline"> &nbsp;|&nbsp; </span>
-        {/* ✅ Points to real shop page */}
-        <Link className="ml-2 underline underline-offset-2 opacity-80 transition-opacity hover:opacity-100 sm:ml-0" to="/shop">Shop Now →</Link>
-      </div>
+        <Link className="ml-2 underline underline-offset-2 opacity-80 transition-opacity hover:opacity-100 sm:ml-0" to={shopRoute('/shop')}>Shop Now →</Link>
+      </div> */}
 
       <Navbar
         open={menuOpen}
         setOpen={setMenuOpen}
-        isAuthenticated={true}
-        cartCount={cart}
+        isAuthenticated={isAuthenticated}
+        user={user}
       />
 
-      <main className="pt-8">
+      <main>
         {/* ── HERO ── */}
         <section id="top" className="bg-charcoal relative h-screen min-h-[560px] overflow-hidden sm:min-h-[640px]">
           <img src={heroImg} alt="Elegant Nigerian woman in traditional patterned dress" className="absolute inset-0 h-full w-full object-cover object-top" />
@@ -153,14 +167,24 @@ export function LandingPage() {
                 Nigeria&apos;s finest Lace, Aso Oke, George, Ankara and luxury bridal fabrics—curated for those who demand excellence.
               </p>
               <div className="flex flex-wrap gap-3 sm:gap-4">
-                {/* ✅ "Explore Collections" scrolls to the collections section on this page */}
+                {/* Always scrolls to collections on this page */}
                 <a href="#collections" className="bg-orange rounded-full px-6 py-3.5 text-sm font-semibold tracking-wide text-white transition hover:bg-[#d4711f] sm:px-8 sm:py-4">
                   Explore Collections
                 </a>
-                {/* ✅ "Create Account" → "Our Story" scrolls to the about section */}
-                <a href="#about-us" className="rounded-full border border-white/40 px-6 py-3.5 text-sm font-semibold tracking-wide text-white transition hover:bg-white/10 sm:px-8 sm:py-4">
-                  Our Story
-                </a>
+
+                {/*
+                  NOT authenticated → "Create Account" → /register
+                  Authenticated     → "Our Story"      → #about-us
+                */}
+                {isAuthenticated ? (
+                  <a href="#about-us" className="rounded-full border border-white/40 px-6 py-3.5 text-sm font-semibold tracking-wide text-white transition hover:bg-white/10 sm:px-8 sm:py-4">
+                    Our Story
+                  </a>
+                ) : (
+                  <Link to="/register" className="rounded-full border border-white/40 px-6 py-3.5 text-sm font-semibold tracking-wide text-white transition hover:bg-white/10 sm:px-8 sm:py-4">
+                    Create Account
+                  </Link>
+                )}
               </div>
               <div className="mt-10 flex gap-8 sm:mt-12">
                 {[['15+', 'Years in Business'], ['200+', 'Fabric Designs']].map(([value, label]) => (
@@ -183,10 +207,10 @@ export function LandingPage() {
           </div>
           <div className="grid auto-rows-[220px] grid-cols-1 gap-4 sm:auto-rows-[240px] sm:grid-cols-2 lg:grid-cols-3">
             {collections.map((collection, index) => (
-              // ✅ Each card links to its real category page in the shop
+              // Authenticated → real category page | Guest → /register
               <Link
                 key={collection.name}
-                to={COLLECTION_ROUTES[collection.name]}
+                to={isAuthenticated ? COLLECTION_ROUTES[collection.name] : '/register'}
                 className={`group relative overflow-hidden rounded-2xl bg-stone-200 ${index === 0 ? 'sm:row-span-2' : ''}`}
                 onMouseEnter={() => setHoveredCollection(index)}
                 onMouseLeave={() => setHoveredCollection(null)}
@@ -201,7 +225,10 @@ export function LandingPage() {
                   <h3 className="font-display text-xl sm:text-2xl">{collection.name}</h3>
                   <p className="mt-1 text-xs text-white/55 transition-all duration-300">{collection.tagline}</p>
                   <div className="mt-3 flex items-center gap-1.5 transition-all duration-300">
-                    <span className="text-orange text-xs font-semibold tracking-wide">Browse</span>
+                    {/* Label hint changes too so guests know they need to sign up */}
+                    <span className="text-orange text-xs font-semibold tracking-wide">
+                      {isAuthenticated ? 'Browse' : 'Sign up to browse'}
+                    </span>
                     <ArrowRight className="text-orange" size={14} aria-hidden="true" />
                   </div>
                 </div>
@@ -228,42 +255,45 @@ export function LandingPage() {
               </div>
             </div>
             <div ref={productScroller} className="flex snap-x gap-5 overflow-x-auto pb-4 [scrollbar-width:none]">
-              {products.map((product, index) => (
-                <article key={product.name} className="w-[230px] shrink-0 snap-start sm:w-[260px] lg:w-[290px]">
-                  {/* ✅ Image area links to the product detail page */}
-                  <Link to={`/shop/product/${index}`} className="group relative block h-[300px] overflow-hidden rounded-xl bg-stone-200 sm:h-[350px]">
-                    <img className="h-full w-full object-cover transition duration-700 group-hover:scale-105" src={product.img} alt={product.name} />
-                    {product.badge && (
-                      <span className="absolute left-3 top-3 rounded-full px-3 py-1 text-[9px] font-bold uppercase tracking-widest text-white" style={{ backgroundColor: product.badgeBg }}>
-                        {product.badge}
-                      </span>
-                    )}
+              {isAuthenticated && featuredLoading && (
+                <p className="py-16 text-sm text-charcoal/50">Loading featured products…</p>
+              )}
+              {isAuthenticated && featuredError && (
+                <p className="py-16 text-sm text-red-600">Could not load featured products.</p>
+              )}
+              {isAuthenticated && !featuredLoading && !featuredError && featuredProducts.length === 0 && (
+                <p className="py-16 text-sm text-charcoal/50">No featured products yet.</p>
+              )}
+              {featuredProducts.map((product) => {
+                const wishlisted = isWishlisted(product.id)
+                return (
+                <article key={product.id} className="w-[230px] shrink-0 snap-start sm:w-[260px] lg:w-[290px]">
+                  <Link to={productRoute(product.id)} className="group relative block h-[300px] overflow-hidden rounded-xl bg-stone-200 sm:h-[350px]">
+                    <img className="h-full w-full object-cover transition duration-700 group-hover:scale-105" src={product.image} alt={product.name} />
                     <button
                       className="absolute right-3 top-3 grid size-9 place-items-center rounded-full bg-white shadow-sm"
-                      onClick={(e) => { e.preventDefault(); toggleWishlist(index) }}
+                      onClick={(event) => { event.preventDefault(); toggleWishlist(product) }}
                       type="button"
                       aria-label={`Save ${product.name}`}
                     >
-                      <Heart size={17} fill={wishlist.has(index) ? '#E67E22' : 'none'} color={wishlist.has(index) ? '#E67E22' : '#374151'} />
+                      <Heart size={17} fill={wishlisted ? '#E67E22' : 'none'} color={wishlisted ? '#E67E22' : '#374151'} />
                     </button>
                   </Link>
-                  {/* ✅ Product name also links to the product page */}
-                  <Link to={`/shop/product/${index}`} className="text-ink hover:text-orange mt-4 mb-2 block text-sm font-semibold transition-colors">
+                  <Link to={productRoute(product.id)} className="text-ink hover:text-orange mt-4 mb-2 block text-sm font-semibold transition-colors">
                     {product.name}
                   </Link>
                   <div className="mb-4 flex items-center gap-2">
-                    <span className="text-orange font-bold">{product.price}</span>
-                    {product.original && <span className="text-sm text-gray-400 line-through">{product.original}</span>}
+                    <span className="text-orange font-bold">{formatCurrency(product.price)}</span>
+                    {product.compareAtPrice && <span className="text-sm text-gray-400 line-through">{formatCurrency(product.compareAtPrice)}</span>}
                   </div>
-                  <button className="bg-charcoal hover:bg-orange w-full rounded-full py-3 text-xs font-semibold tracking-wide text-white transition" onClick={addToCart} type="button">
+                  <button className="bg-charcoal hover:bg-orange w-full rounded-full py-3 text-xs font-semibold tracking-wide text-white transition" onClick={() => addToCart(product)} type="button">
                     Add to Cart
                   </button>
                 </article>
-              ))}
+              )})}
             </div>
-            {/* ✅ View all CTA → full shop */}
             <div className="mt-10 text-center">
-              <Link to="/shop" className="text-charcoal border-charcoal/20 hover:border-charcoal/50 inline-flex items-center gap-2 rounded-full border px-8 py-3.5 text-sm font-medium transition-colors">
+              <Link to={shopRoute('/shop')} className="text-charcoal border-charcoal/20 hover:border-charcoal/50 inline-flex items-center gap-2 rounded-full border px-8 py-3.5 text-sm font-medium transition-colors">
                 View all products <ArrowRight size={15} />
               </Link>
             </div>
@@ -297,35 +327,27 @@ export function LandingPage() {
             <p className="text-orange mb-3 text-[10px] font-semibold uppercase tracking-[0.35em]">Just Arrived</p>
             <h2 className="font-display text-ink text-3xl font-normal sm:text-4xl lg:text-5xl">Latest Arrivals</h2>
           </div>
-          <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4 lg:gap-5">
-            {products.slice(0, 4).map((product, index) => (
-              <article key={product.name} className="group">
+          <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-5 lg:gap-5">
+            {latestProducts.map((product, index) => (
+              <article key={product.id} className="group">
                 <div className={`relative mb-3 overflow-hidden rounded-xl bg-stone-200 sm:mb-4 ${index % 2 === 0 ? 'h-[220px] sm:h-[300px]' : 'h-[190px] sm:h-[260px]'}`}>
-                  <img src={product.img} alt={product.name} className="h-full w-full object-cover transition duration-700 group-hover:scale-105" />
-                  {product.badge && (
-                    <span className="bg-orange absolute left-3 top-3 rounded-full px-2.5 py-1 text-[9px] font-bold uppercase tracking-widest text-white">
-                      {product.badge}
-                    </span>
-                  )}
-                  {/* ✅ Quick Add goes to the product page */}
+                  <img src={product.image} alt={product.name} className="h-full w-full object-cover transition duration-700 group-hover:scale-105" />
                   <Link
-                    to={`/shop/product/${index}`}
+                    to={productRoute(product.id)}
                     className="text-charcoal hover:bg-orange absolute inset-x-3 bottom-3 rounded-full bg-white py-2.5 text-center text-xs font-semibold opacity-0 shadow-sm transition group-hover:opacity-100 hover:text-white"
                   >
                     Quick Add
                   </Link>
                 </div>
-                {/* ✅ Name links to product page */}
-                <Link to={`/shop/product/${index}`} className="text-ink hover:text-orange mb-1 block text-sm font-medium transition-colors">
+                <Link to={productRoute(product.id)} className="text-ink hover:text-orange mb-1 block text-sm font-medium transition-colors">
                   {product.name}
                 </Link>
-                <span className="text-orange font-bold">{product.price}</span>
+                <span className="text-orange font-bold">{formatCurrency(product.price)}</span>
               </article>
             ))}
           </div>
-          {/* ✅ "See all new arrivals" → shop filtered by newest */}
           <div className="mt-10 text-center">
-            <Link to="/shop?sort=newest" className="bg-orange inline-flex items-center gap-2 rounded-full px-8 py-3.5 text-sm font-semibold text-white transition hover:bg-[#d4711f]">
+            <Link to={shopRoute('/shop?sort=newest')} className="bg-orange inline-flex items-center gap-2 rounded-full px-8 py-3.5 text-sm font-semibold text-white transition hover:bg-[#d4711f]">
               See all new arrivals <ArrowRight size={15} />
             </Link>
           </div>
@@ -345,8 +367,7 @@ export function LandingPage() {
                 </h2>
                 <p className="text-ink/55 mb-5 text-sm leading-relaxed">Founded in Lagos in 2009, Sekjad Nig Enterprises was born from a belief that every Nigerian deserves access to the finest traditional fabrics.</p>
                 <p className="text-ink/55 mb-7 text-sm leading-relaxed">We partner directly with master weavers across Yorubaland, Igboland, and the Niger Delta.</p>
-                {/* ✅ Link to a dedicated About page */}
-                <Link to="/about" className="text-orange border-orange/30 hover:border-orange inline-flex items-center gap-2 rounded-full border px-6 py-3 text-sm font-semibold transition-colors">
+                <Link to="/about-us" className="text-orange border-orange/30 hover:border-orange inline-flex items-center gap-2 rounded-full border px-6 py-3 text-sm font-semibold transition-colors">
                   Read our full story <ArrowRight size={14} />
                 </Link>
               </div>
@@ -393,43 +414,33 @@ export function LandingPage() {
                 Have a question about a fabric, a bulk order, or a bespoke request? Our team is ready to help.
               </p>
             </div>
-
             <div className="grid gap-12 lg:grid-cols-5 lg:gap-16">
-              {/* Company info */}
               <div className="lg:col-span-2">
                 <div className="space-y-7">
                   <div className="flex gap-4">
-                    <span className="border-orange/25 bg-orange/10 text-orange flex size-11 shrink-0 items-center justify-center rounded-xl border">
-                      <MapPin size={18} strokeWidth={1.75} />
-                    </span>
+                    <span className="border-orange/25 bg-orange/10 text-orange flex size-11 shrink-0 items-center justify-center rounded-xl border"><MapPin size={18} strokeWidth={1.75} /></span>
                     <div>
                       <h3 className="mb-1 text-sm font-semibold text-white">Showroom Address</h3>
                       <p className="text-sm leading-relaxed text-white/45">14 Balogun Street, Idumota Market<br />Lagos Island, Lagos, Nigeria</p>
                     </div>
                   </div>
                   <div className="flex gap-4">
-                    <span className="border-orange/25 bg-orange/10 text-orange flex size-11 shrink-0 items-center justify-center rounded-xl border">
-                      <Phone size={18} strokeWidth={1.75} />
-                    </span>
+                    <span className="border-orange/25 bg-orange/10 text-orange flex size-11 shrink-0 items-center justify-center rounded-xl border"><Phone size={18} strokeWidth={1.75} /></span>
                     <div>
                       <h3 className="mb-1 text-sm font-semibold text-white">Phone</h3>
-                      <a href="tel:+2348001234523"  className="block text-sm text-white/45 transition hover:text-orange">+234 800 SEKJAD</a>
-                      <a href="tel:+2349165151867"  className="block text-sm text-white/45 transition hover:text-orange">+234 916 515 1867</a>
+                      <a href="tel:+2348001234523" className="block text-sm text-white/45 transition hover:text-orange">+234 800 SEKJAD</a>
+                      <a href="tel:+2349165151867" className="block text-sm text-white/45 transition hover:text-orange">+234 916 515 1867</a>
                     </div>
                   </div>
                   <div className="flex gap-4">
-                    <span className="border-orange/25 bg-orange/10 text-orange flex size-11 shrink-0 items-center justify-center rounded-xl border">
-                      <Mail size={18} strokeWidth={1.75} />
-                    </span>
+                    <span className="border-orange/25 bg-orange/10 text-orange flex size-11 shrink-0 items-center justify-center rounded-xl border"><Mail size={18} strokeWidth={1.75} /></span>
                     <div>
                       <h3 className="mb-1 text-sm font-semibold text-white">Email</h3>
                       <a href="mailto:hello@sekjad.com" className="block text-sm text-white/45 transition hover:text-orange">hello@sekjad.com</a>
                     </div>
                   </div>
                   <div className="flex gap-4">
-                    <span className="border-orange/25 bg-orange/10 text-orange flex size-11 shrink-0 items-center justify-center rounded-xl border">
-                      <Clock size={18} strokeWidth={1.75} />
-                    </span>
+                    <span className="border-orange/25 bg-orange/10 text-orange flex size-11 shrink-0 items-center justify-center rounded-xl border"><Clock size={18} strokeWidth={1.75} /></span>
                     <div>
                       <h3 className="mb-1 text-sm font-semibold text-white">Business Hours</h3>
                       <p className="text-sm leading-relaxed text-white/45">Mon – Sat: 8:00am – 7:00pm<br />Sunday: Closed</p>
@@ -448,8 +459,6 @@ export function LandingPage() {
                   </div>
                 </div>
               </div>
-
-              {/* Contact form */}
               <div className="lg:col-span-3">
                 {contactSubmitted ? (
                   <div className="bg-orange/10 border-orange/25 flex h-full flex-col items-center justify-center rounded-2xl border px-8 py-14 text-center">
