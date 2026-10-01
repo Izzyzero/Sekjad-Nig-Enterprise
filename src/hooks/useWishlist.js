@@ -1,9 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useAuth } from './useAuth'
+import { useRequireAuth } from './useRequireAuth'
 import { wishlistService } from '../services/wishlist.service'
 
 export function useWishlist() {
   const queryClient = useQueryClient()
+  const requireAuth = useRequireAuth()
   const { user, isAuthenticated, isAuthLoading } = useAuth()
   const queryKey = ['wishlist', user?.id ?? user?._id ?? 'current-user']
 
@@ -33,14 +35,17 @@ export function useWishlist() {
 
   const add = (productOrId) => {
     const productId = productOrId?.id ?? productOrId?._id ?? productOrId
+    if (!requireAuth('/wishlist')) return
     if (productId) addMutation.mutate(productId)
   }
   const remove = (productOrId) => {
     const productId = productOrId?.id ?? productOrId?._id ?? productOrId
+    if (!requireAuth('/wishlist')) return
     if (productId) removeMutation.mutate(productId)
   }
   const toggle = (product) => {
     const productId = product?.id ?? product?._id
+    if (!requireAuth(`/shop/product/${encodeURIComponent(productId)}`)) return
     if (!productId) return
     if (isWishlisted(productId)) removeMutation.mutate(productId)
     else addMutation.mutate(productId)
@@ -53,7 +58,7 @@ export function useWishlist() {
     add,
     remove,
     toggle,
-    clear: () => clearMutation.mutate(),
+    clear: () => requireAuth('/wishlist') && clearMutation.mutate(),
     isLoading: isAuthLoading || wishlistQuery.isLoading,
     isError: wishlistQuery.isError,
     error: wishlistQuery.error,

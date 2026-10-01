@@ -38,9 +38,7 @@ function AppRoutes() {
    <Route
      path="/"
      element={
-       <GuestRoute>
-         <LandingPage />
-       </GuestRoute>
+       <LandingPage />
      }
    />
    <Route

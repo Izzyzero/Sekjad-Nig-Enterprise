@@ -6,8 +6,10 @@ import { getApiError, getRateLimitSeconds } from '../services/api'
 import { cartService } from '../services/cart.service'
 import { loadCheckoutAttempt, saveCheckoutAttempt, prepareWhatsAppOrder, openWhatsAppOrder } from '../services/whatsapp-order.service'
 import { formatCurrency } from '../utils/formatCurrency'
+import { useRequireAuth } from '../hooks/useRequireAuth'
 
 export function WhatsAppCheckout({ fingerprint, userId, disabled, onPreparing }) {
+  const requireAuth = useRequireAuth()
   const storageKey = `whatsapp-checkout:${userId}`
   const [attempt, setAttempt] = useState(() => loadCheckoutAttempt(window.sessionStorage, storageKey, fingerprint))
   const [preparing, setPreparing] = useState(false)
@@ -23,6 +25,7 @@ export function WhatsAppCheckout({ fingerprint, userId, disabled, onPreparing })
   }, [storageKey, attempt])
 
   const prepare = async () => {
+    if (!requireAuth('/checkout')) return
     if (disabled || inFlight.current || rateLimitSeconds) return
     inFlight.current = true
     setPreparing(true)

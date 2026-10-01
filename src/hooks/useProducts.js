@@ -18,6 +18,9 @@ export function useProducts(filters, options = {}) {
     queryFn: () => getProducts(filters),
     keepPreviousData: true, // avoids grid flashing empty between pages/filters
     staleTime: 60 * 1000,
+    // Retrying an access denial cannot make a guest authorized.
+    retry: (failureCount, error) =>
+      ![401, 403].includes(error.response?.status) && failureCount < 3,
     ...options,
   })
 }

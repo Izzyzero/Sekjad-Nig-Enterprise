@@ -125,7 +125,7 @@ export function Login() {
 
       <p className="mt-8 text-center text-sm text-ink/50">
         Don&apos;t have an account?{' '}
-        <Link to="/register" className="text-orange font-semibold hover:underline">
+        <Link to="/register" state={{ from: location.state?.from }} className="text-orange font-semibold hover:underline">
           Sign up
         </Link>
       </p>

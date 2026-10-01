@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { readFile } from 'node:fs/promises'
 import test from 'node:test'
-import { api, applyApiFieldErrors, getRateLimitSeconds, setAccessToken } from './api.js'
+import { api, applyApiFieldErrors, getRateLimitSeconds, setAccessToken, setAuthenticationFailureHandler } from './api.js'
 import { authService } from './auth.service.js'
 
 const response = (config, data, status = 200) => ({ config, data, status, statusText: 'OK', headers: {} })
@@ -9,6 +9,41 @@ const rejection = (config, status, data = {}) => Promise.reject({ config, respon
 const source = (relativePath) => readFile(new URL(relativePath, import.meta.url), 'utf8')
 
 test.beforeEach(() => setAccessToken(null))
+
+test('anonymous product failures do not refresh or trigger session failure', async () => {
+  const requests = []
+  let failures = 0
+  const cleanup = setAuthenticationFailureHandler(() => { failures += 1 })
+  try {
+    api.defaults.adapter = (config) => {
+      requests.push(config.url)
+      return rejection(config, 401)
+    }
+    await assert.rejects(api.get('/products'))
+    assert.deepEqual(requests, ['/products'])
+    assert.equal(failures, 0)
+  } finally {
+    cleanup()
+  }
+})
+
+test('expired authenticated sessions still notify the provider when refresh fails', async () => {
+  setAccessToken('expired-token')
+  let failures = 0
+  const requests = []
+  const cleanup = setAuthenticationFailureHandler(() => { failures += 1 })
+  try {
+    api.defaults.adapter = (config) => {
+      requests.push(config.url)
+      return rejection(config, 401)
+    }
+    await assert.rejects(api.get('/orders'))
+    assert.deepEqual(requests, ['/orders', '/auth/refresh'])
+    assert.equal(failures, 1)
+  } finally {
+    cleanup()
+  }
+})
 
 test('registration posts its contract and navigates to email verification with the email', async () => {
   let request

@@ -53,7 +53,7 @@ api.interceptors.response.use(
   (response) => response,
   async (error) => {
     const request = error.config
-    const canRefresh = error.response?.status === 401 && request && !request._authRetry &&
+    const canRefresh = error.response?.status === 401 && request && request.headers?.Authorization && !request._authRetry &&
       !request.skipAuthRefresh && !isAuthRequest(request.url)
     if (!canRefresh) throw error
 

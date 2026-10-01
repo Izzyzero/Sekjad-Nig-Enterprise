@@ -1,7 +1,7 @@
 import { createContext, useCallback, useEffect, useMemo, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
 import { authService } from '../services/auth.service'
 import { setAccessToken, setAuthenticationFailureHandler } from '../services/api'
+import { hasSessionHint, setSessionHint } from '../utils/sessionHint'
 
 // Kept with the provider to preserve the project's existing context/hook pattern.
 // eslint-disable-next-line react-refresh/only-export-components
@@ -12,12 +12,13 @@ const tokenOf = (response) => payloadOf(response)?.accessToken ?? null
 const userOf = (response) => payloadOf(response)?.user ?? null
 
 export function AuthProvider({ children }) {
-  const navigate = useNavigate()
   const [user, setUser] = useState(null)
   const [accessToken, setToken] = useState(null)
-  const [isAuthLoading, setIsAuthLoading] = useState(true)
+  const [shouldRestoreSession] = useState(hasSessionHint)
+  const [isAuthLoading, setIsAuthLoading] = useState(shouldRestoreSession)
 
   const clearSession = useCallback(() => {
+    setSessionHint(false)
     setAccessToken(null)
     setToken(null)
     setUser(null)
@@ -25,17 +26,17 @@ export function AuthProvider({ children }) {
 
   const applyToken = useCallback((response) => {
     const token = tokenOf(response)
+    setSessionHint(Boolean(token))
     setAccessToken(token)
     setToken(token)
     return token
   }, [])
 
-  useEffect(() => setAuthenticationFailureHandler(() => {
-    clearSession()
-    navigate('/login', { replace: true })
-  }), [clearSession, navigate])
+  // Route guards handle redirects; public pages remain accessible on session expiry.
+  useEffect(() => setAuthenticationFailureHandler(clearSession), [clearSession])
 
   useEffect(() => {
+    if (!shouldRestoreSession) return
     let active = true
     authService.refresh({ notifyOnFailure: false })
       .then(async (response) => {
@@ -51,7 +52,7 @@ export function AuthProvider({ children }) {
         if (active) setIsAuthLoading(false)
       })
     return () => { active = false }
-  }, [applyToken, clearSession])
+  }, [applyToken, clearSession, shouldRestoreSession])
 
   const login = useCallback(async (credentials) => {
     const response = await authService.login(credentials)

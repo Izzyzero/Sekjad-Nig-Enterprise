@@ -28,7 +28,7 @@ export function VerifyOtp() {
     setAuthError('')
     try {
       const response = await authService.verifyEmail({ email, code })
-      navigate('/login', { replace: true, state: { message: response.message } })
+      navigate('/login', { replace: true, state: { message: response.message, from: location.state?.from } })
     } catch (error) {
       applyApiFieldErrors(error, setError)
       setAuthError(getApiError(error, 'Unable to verify your email. Please try again.'))

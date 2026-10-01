@@ -1,13 +1,16 @@
 import { useRef, useState } from 'react'
 import { paymentService } from '../services/payment.service'
 import { getApiError } from '../services/api'
+import { useRequireAuth } from './useRequireAuth'
 
 export function usePaystackRedirect() {
+  const requireAuth = useRequireAuth()
   const inFlight = useRef(false)
   const [initializing, setInitializing] = useState(false)
   const [paymentError, setPaymentError] = useState('')
 
   const startPayment = async () => {
+    if (!requireAuth('/checkout')) return
     if (inFlight.current) return
     inFlight.current = true
     setInitializing(true)

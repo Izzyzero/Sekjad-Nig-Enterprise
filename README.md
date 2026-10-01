@@ -2,6 +2,23 @@
 
 ## Production verification
 
+The landing page uses `/products/preview/featured` and `/products/preview/latest`
+without query parameters. Both endpoints must return `{ success: true, data: [...] }`.
+Catalog, detail, cart, wishlist, orders, and checkout remain authenticated. Guest
+actions lead to login with the destination preserved; cart/wishlist actions can be
+completed from the product page after login.
+
+A non-secret localStorage flag (`sekjad-session-present`) enables cookie-based
+session restoration after a successful sign-in. Fresh guests do not request token
+refresh. The flag grants no access; only a server-issued token establishes a
+session. Existing users without this new flag need to sign in once after deployment.
+If browser storage is unavailable, sessions work until the page is reloaded.
+
+`node scripts/verify-preview-flows.mjs` runs isolated Chromium browser checks
+against a mock API, including guest routes/actions, login return, bearer requests,
+and preview loading/empty/error states. Set `BROWSER_PATH` if Chromium is not in
+one of the default Windows locations. This does not contact the production API.
+
 Run `npm run lint`, `npm test`, and `npm run build` before deployment. Configure
 the production `VITE_API_URL` and Google client ID before building. The hosting
 server must serve `index.html` for application routes, including `/checkout/return`.

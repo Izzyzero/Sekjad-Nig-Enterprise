@@ -48,7 +48,7 @@ export function Navbar({
   const navLinks = isAuthenticated
     ? (isAdminUser(user) ? [...AUTH_NAV_LINKS, ADMIN_NAV_LINK] : AUTH_NAV_LINKS)
     : PUBLIC_NAV_LINKS
-  const homeHref = isAuthenticated ? '/home' : '/'
+  const homeHref = '/'
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 60)
@@ -214,10 +214,10 @@ export function Navbar({
       >
         {/* Drawer header */}
         <div className="flex items-center justify-between border-b border-gray-100 px-5 py-4">
-          <a href="#top" onClick={closeMenu} className="leading-none">
+          <Link to="/" onClick={closeMenu} className="leading-none">
             <p className="text-charcoal font-display text-lg font-semibold tracking-tight">Sekjad</p>
             <p className="text-orange text-[9px] font-medium uppercase tracking-[0.3em]">Enterprise</p>
-          </a>
+          </Link>
           <button type="button" onClick={closeMenu} aria-label="Close menu"
             className="text-charcoal/60 hover:text-charcoal rounded-full p-1.5 transition-colors">
             <X size={20} strokeWidth={1.8} />

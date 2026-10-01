@@ -27,7 +27,7 @@ export function ProductQuickView({ product, onClose }) {
 
   const handleAddToCart = () => addToCart(product, quantity)
   const handleBuyNow = () => {
-    addToCart(product, quantity)
+    if (addToCart(product, quantity) === false) return
     navigate('/cart')
   }
 

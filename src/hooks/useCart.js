@@ -1,9 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useAuth } from './useAuth'
+import { useRequireAuth } from './useRequireAuth'
 import { cartService } from '../services/cart.service'
 
 export function useCart() {
   const queryClient = useQueryClient()
+  const requireAuth = useRequireAuth()
   const { user, isAuthenticated, isAuthLoading } = useAuth()
   const queryKey = ['cart', user?.id ?? user?._id ?? 'current-user']
 
@@ -34,13 +36,14 @@ export function useCart() {
 
   const addToCart = (product, quantity = 1) => {
     const productId = product?.id ?? product?._id
+    if (!requireAuth(`/shop/product/${encodeURIComponent(productId)}`)) return false
     if (productId) addMutation.mutate({ productId, quantity })
   }
 
   const updateQuantity = (id, quantity) =>
-    updateMutation.mutate({ productId: id, quantity })
-  const removeFromCart = (id) => removeMutation.mutate(id)
-  const clearCart = () => clearMutation.mutate()
+    requireAuth('/cart') && updateMutation.mutate({ productId: id, quantity })
+  const removeFromCart = (id) => requireAuth('/cart') && removeMutation.mutate(id)
+  const clearCart = () => requireAuth('/cart') && clearMutation.mutate()
 
   return {
     cart: cartQuery.data,

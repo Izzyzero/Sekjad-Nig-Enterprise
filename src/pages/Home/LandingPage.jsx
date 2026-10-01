@@ -4,7 +4,7 @@ import { MapPin, Phone, Mail, Clock } from 'lucide-react'
 import { FaFacebookF, FaInstagram, FaTiktok, FaWhatsapp } from 'react-icons/fa'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../../hooks/useAuth'
-import { useProducts } from '../../hooks/useProducts'
+import { useProductPreviews } from '../../hooks/useProductPreviews'
 import { useCart } from '../../hooks/useCart'
 import { useWishlist } from '../../hooks/useWishlist'
 import { formatCurrency } from '../../utils/formatCurrency'
@@ -41,16 +41,10 @@ const COLLECTION_ROUTES = {
 
 export function LandingPage() {
   const { isAuthenticated, user } = useAuth()
-  const { data: featuredData, isLoading: featuredLoading, isError: featuredError } = useProducts(
-    { isFeatured: true, limit: 6, sort: '-createdAt' },
-  )
-  const { data: latestData, isLoading: latestLoading, isError: latestError } = useProducts(
-    { limit: 5, sort: '-createdAt' },
-  )
+  const { data: featuredProducts = [], isPending: featuredLoading, isError: featuredError, refetch: retryFeatured } = useProductPreviews('featured')
+  const { data: latestProducts = [], isPending: latestLoading, isError: latestError, refetch: retryLatest } = useProductPreviews('latest')
   const { addToCart } = useCart()
   const { isWishlisted, toggle: toggleWishlist } = useWishlist()
-  const featuredProducts = featuredData?.items ?? []
-  const latestProducts = latestData?.items ?? []
 
   const collections = [
     { name: 'Lace Fabrics',      tagline: 'French & Swiss elegance',      img: lace    },
@@ -124,8 +118,8 @@ export function LandingPage() {
   const testimonial = testimonials[activeTestimonial]
 
   // Derived route helpers — single source of truth for auth-conditional links
-  const shopRoute      = (path) => isAuthenticated ? path : '/register'
-  const productRoute   = (id) => isAuthenticated ? `/shop/product/${id}` : '/register'
+  const shopRoute      = (path) => path
+  const productRoute   = (id) => `/shop/product/${encodeURIComponent(id)}`
 
   return (
     <div className="min-h-screen bg-white">
@@ -203,7 +197,7 @@ export function LandingPage() {
               // Authenticated → real category page | Guest → /register
               <Link
                 key={collection.name}
-                to={isAuthenticated ? COLLECTION_ROUTES[collection.name] : '/register'}
+                to={COLLECTION_ROUTES[collection.name]}
                 className={`group relative overflow-hidden rounded-2xl bg-stone-200 ${index === 0 ? 'sm:row-span-2' : ''}`}
                 onMouseEnter={() => setHoveredCollection(index)}
                 onMouseLeave={() => setHoveredCollection(null)}
@@ -220,7 +214,7 @@ export function LandingPage() {
                   <div className="mt-3 flex items-center gap-1.5 transition-all duration-300">
                     {/* Label hint changes too so guests know they need to sign up */}
                     <span className="text-orange text-xs font-semibold tracking-wide">
-                      {isAuthenticated ? 'Browse' : 'Sign up to browse'}
+                      {isAuthenticated ? 'Browse' : 'Log in to browse'}
                     </span>
                     <ArrowRight className="text-orange" size={14} aria-hidden="true" />
                   </div>
@@ -249,10 +243,10 @@ export function LandingPage() {
             </div>
             <div ref={productScroller} className="flex snap-x gap-5 overflow-x-auto pb-4 [scrollbar-width:none]">
               {featuredLoading && (
-                <p className="py-16 text-sm text-charcoal/50">Loading featured products…</p>
+                <p role="status" className="py-16 text-sm text-charcoal/50">Loading featured products…</p>
               )}
               {featuredError && (
-                <p className="py-16 text-sm text-red-600">Could not load featured products.</p>
+                <p role="alert" className="py-16 text-sm text-red-600">Could not load featured products. <button type="button" onClick={() => retryFeatured()} className="underline">Try again</button></p>
               )}
               {!featuredLoading && !featuredError && featuredProducts.length === 0 && (
                 <p className="py-16 text-sm text-charcoal/50">No featured products yet.</p>
@@ -262,7 +256,7 @@ export function LandingPage() {
                 return (
                 <article key={product.id} className="w-[230px] shrink-0 snap-start sm:w-[260px] lg:w-[290px]">
                   <Link to={productRoute(product.id)} className="group relative block h-[300px] overflow-hidden rounded-xl bg-stone-200 sm:h-[350px]">
-                    <img className="h-full w-full object-cover transition duration-700 group-hover:scale-105" src={product.image} alt={product.name} />
+                    <img className="h-full w-full object-cover transition duration-700 group-hover:scale-105" src={product.image} alt={product.imageAlt || product.name} />
                     <ProductTags tags={product.tags} className="absolute left-3 right-14 top-3" />
                     <button
                       className="absolute right-3 top-3 grid size-9 place-items-center rounded-full bg-white shadow-sm"
@@ -277,8 +271,8 @@ export function LandingPage() {
                     {product.name}
                   </Link>
                   <div className="mb-4 flex items-center gap-2">
-                    <span className="text-orange font-bold">{formatCurrency(product.price)}</span>
-                    {product.compareAtPrice && <span className="text-sm text-gray-400 line-through">{formatCurrency(product.compareAtPrice)}</span>}
+                    <span className="text-orange font-bold">{formatCurrency(product.price, product.currency)}</span>
+                    {product.compareAtPrice && <span className="text-sm text-gray-400 line-through">{formatCurrency(product.compareAtPrice, product.currency)}</span>}
                   </div>
                   <button className="bg-charcoal hover:bg-orange w-full rounded-full py-3 text-xs font-semibold tracking-wide text-white transition" onClick={() => addToCart(product)} type="button">
                     Add to Cart
@@ -321,12 +315,12 @@ export function LandingPage() {
             <p className="text-orange mb-3 text-[10px] font-semibold uppercase tracking-[0.35em]">Just Arrived</p>
             <h2 className="font-display text-ink text-3xl font-normal sm:text-4xl lg:text-5xl">Latest Arrivals</h2>
           </div>
-          <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-5 lg:gap-5">
+          <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-6 lg:gap-5">
             {latestLoading && (
-              <p className="col-span-full py-16 text-sm text-charcoal/50">Loading latest arrivals...</p>
+              <p role="status" className="col-span-full py-16 text-sm text-charcoal/50">Loading latest arrivals...</p>
             )}
             {latestError && (
-              <p className="col-span-full py-16 text-sm text-red-600">Could not load latest arrivals.</p>
+              <p role="alert" className="col-span-full py-16 text-sm text-red-600">Could not load latest arrivals. <button type="button" onClick={() => retryLatest()} className="underline">Try again</button></p>
             )}
             {!latestLoading && !latestError && latestProducts.length === 0 && (
               <p className="col-span-full py-16 text-sm text-charcoal/50">No latest arrivals yet.</p>
@@ -334,7 +328,7 @@ export function LandingPage() {
             {latestProducts.map((product, index) => (
               <article key={product.id} className="group">
                 <div className={`relative mb-3 overflow-hidden rounded-xl bg-stone-200 sm:mb-4 ${index % 2 === 0 ? 'h-[220px] sm:h-[300px]' : 'h-[190px] sm:h-[260px]'}`}>
-                  <img src={product.image} alt={product.name} className="h-full w-full object-cover transition duration-700 group-hover:scale-105" />
+                  <Link to={productRoute(product.id)} className="block h-full"><img src={product.image} alt={product.imageAlt || product.name} className="h-full w-full object-cover transition duration-700 group-hover:scale-105" /></Link>
                   <ProductTags tags={product.tags} className="absolute left-3 right-3 top-3" />
                   <Link
                     to={productRoute(product.id)}
@@ -346,7 +340,7 @@ export function LandingPage() {
                 <Link to={productRoute(product.id)} className="text-ink hover:text-orange mb-1 block text-sm font-medium transition-colors">
                   {product.name}
                 </Link>
-                <span className="text-orange font-bold">{formatCurrency(product.price)}</span>
+                <span className="text-orange font-bold">{formatCurrency(product.price, product.currency)}</span>
               </article>
             ))}
           </div>

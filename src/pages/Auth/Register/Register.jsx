@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { Eye, EyeOff } from 'lucide-react'
 import { AuthLayout } from '../../../components/auth/AuthLayout'
 import { GoogleSignIn } from '../../../components/auth/GoogleSignIn'
@@ -26,6 +26,7 @@ const schema = z.object({
 
 export function Register() {
   const navigate = useNavigate()
+  const location = useLocation()
   const [showPassword, setShowPassword] = useState(false)
   const [authError, setAuthError] = useState('')
   const { rateLimitSeconds, startRateLimit } = useRateLimit()
@@ -39,7 +40,7 @@ export function Register() {
     try {
       const { firstName, lastName, email, phoneNumber, password } = values
       const response = await authService.register({ firstName, lastName, email, phoneNumber, password })
-      navigate('/verify-email', { state: { email: values.email, message: response.message } })
+      navigate('/verify-email', { state: { email: values.email, message: response.message, from: location.state?.from } })
     } catch (error) {
       applyApiFieldErrors(error, setError)
       setAuthError(getApiError(error, 'Unable to start registration. Please try again.'))
@@ -75,7 +76,7 @@ export function Register() {
         <button type="submit" disabled={disabled} className="bg-orange w-full rounded-full py-3.5 text-sm font-semibold text-white disabled:opacity-60">{isSubmitting ? 'Creating account…' : rateLimitSeconds ? `Try again in ${rateLimitSeconds}s` : 'Create Account'}</button>
       </form>
       <GoogleSignIn disabled={disabled} />
-      <p className="mt-8 text-center text-sm text-ink/50">Already have an account? <Link to="/login" className="text-orange font-semibold hover:underline">Log in</Link></p>
+      <p className="mt-8 text-center text-sm text-ink/50">Already have an account? <Link to="/login" state={{ from: location.state?.from }} className="text-orange font-semibold hover:underline">Log in</Link></p>
     </AuthLayout>
   )
 }
