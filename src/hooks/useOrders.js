@@ -1,6 +1,6 @@
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { getOrders, getOrder, updateOrderStatus } from '../services/order.service'
+import { getOrders, getOrder, updateOrderStatus, confirmWhatsAppOrder } from '../services/order.service'
 
 export function useAdminOrders(filters) {
   return useQuery({
@@ -25,6 +25,18 @@ export function useUpdateOrderStatus() {
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['admin-orders'] })
       queryClient.invalidateQueries({ queryKey: ['admin-order', variables.id] })
+      queryClient.invalidateQueries({ queryKey: ['admin-dashboard'] })
+    },
+  })
+}
+
+export function useConfirmWhatsAppOrder() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (id) => confirmWhatsAppOrder(id),
+    onSuccess: (_, id) => {
+      queryClient.invalidateQueries({ queryKey: ['admin-orders'] })
+      queryClient.invalidateQueries({ queryKey: ['admin-order', id] })
       queryClient.invalidateQueries({ queryKey: ['admin-dashboard'] })
     },
   })

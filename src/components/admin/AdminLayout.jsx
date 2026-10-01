@@ -19,11 +19,11 @@ export function AdminLayout() {
   }
 
   return (
-    <div className="min-h-screen bg-[#F9FAFB] text-[#111827]">
+    <div className="min-h-screen min-w-0 bg-[#F9FAFB] text-[#111827]">
       <header className="border-b border-[#E5E7EB] bg-white">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-5 py-4 sm:px-8">
+        <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3 px-5 py-4 sm:px-8">
           <Link to="/home" className="font-display text-xl font-semibold">Sekjad Admin</Link>
-          <div className="flex items-center gap-3">
+          <div className="flex shrink-0 items-center gap-3">
             <Link to="/shop" className="text-sm font-medium text-[#6B7280] hover:text-[#E67E22]">
               View shop
             </Link>
@@ -34,9 +34,9 @@ export function AdminLayout() {
         </div>
       </header>
 
-      <div className="mx-auto grid max-w-7xl gap-6 px-5 py-6 sm:px-8 md:grid-cols-[210px_minmax(0,1fr)]">
-        <aside>
-          <nav className="flex gap-2 overflow-x-auto md:flex-col" aria-label="Admin navigation">
+      <div className="mx-auto grid max-w-7xl grid-cols-[minmax(0,1fr)] gap-6 px-5 py-6 sm:px-8 md:grid-cols-[210px_minmax(0,1fr)]">
+        <aside className="min-w-0">
+          <nav className="flex w-full min-w-0 gap-2 overflow-x-auto md:flex-col" aria-label="Admin navigation">
             {ADMIN_LINKS.map(({ label, to, end, icon: Icon }) => (
               <NavLink
                 key={to}

@@ -4,6 +4,7 @@ import { BrowserRouter } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { Provider } from 'react-redux'
 import App from './App.jsx'
+import { ErrorBoundary } from './components/ErrorBoundary'
 import { store } from './store'
 import { AuthProvider } from './context/AuthContext'
 import { CartProvider } from './context/CartContext'
@@ -17,20 +18,22 @@ const queryClient = new QueryClient()
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
+    <ErrorBoundary>
     <Provider store={store}>
       <QueryClientProvider client={queryClient}>
         <ThemeProvider>
-          <AuthProvider>
-            <CartProvider>
-              <WishlistProvider>
-                <BrowserRouter>
+          <BrowserRouter>
+            <AuthProvider>
+              <CartProvider>
+                <WishlistProvider>
                   <App />
-                </BrowserRouter>
-              </WishlistProvider>
-            </CartProvider>
-          </AuthProvider>
+                </WishlistProvider>
+              </CartProvider>
+            </AuthProvider>
+          </BrowserRouter>
         </ThemeProvider>
       </QueryClientProvider>
     </Provider>
+    </ErrorBoundary>
   </StrictMode>,
 )

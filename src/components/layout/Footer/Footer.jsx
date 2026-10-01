@@ -1,14 +1,22 @@
-import {
-  FaFacebookF,
-  FaInstagram,
-  FaTiktok,
-  FaWhatsapp,
-} from 'react-icons/fa'
+import { FaFacebookF, FaInstagram, FaTiktok, FaWhatsapp } from 'react-icons/fa'
+import { Link } from 'react-router-dom'
 
 const FOOTER_LINKS = {
-  Shop: ['Lace Fabrics', 'Aso Oke', 'Brocade', 'Damask&Sego', 'Senator Material', 'Bridal Fabrics'],
-  Company: ['About Us', 'Our Story', 'Blog', 'Press', 'Careers'],
-  Support: ['Contact Us', 'FAQs', 'Shipping Policy', 'Returns', 'Size Guide'],
+  Shop: [
+    { label: 'Lace Fabrics', to: '/shop?category=lace' },
+    { label: 'Aso Oke', to: '/shop?category=aso-oke' },
+    { label: 'Brocade', to: '/shop?category=brocade' },
+    { label: 'Damask&Sego', to: '/shop?category=damask-sego' },
+    { label: 'Senator Material', to: '/shop?category=senator' },
+  ],
+  Company: [
+    { label: 'About Us', to: '/about-us' },
+    { label: 'Our Story', to: '/about-us' },
+  ],
+  Support: [
+    { label: 'Contact Us', to: '/contact' },
+    { label: 'FAQs', to: '/contact' },
+  ],
 }
 
 const SOCIAL_LINKS = [
@@ -30,7 +38,7 @@ const SOCIAL_LINKS = [
   {
     Icon: FaWhatsapp,
     title: 'WhatsApp',
-    href: 'https://wa.me/234XXXXXXXXXX',
+    href: 'https://wa.me/2348107965151',
   },
 ]
 
@@ -41,7 +49,7 @@ export function Footer() {
         <div className="mb-12 grid grid-cols-1 gap-10 sm:grid-cols-2 lg:grid-cols-5 justify-between">
           <div className="sm:col-span-2 lg:col-span-1">
             <p className="font-display mb-0.5 text-2xl font-normal text-white">Sekjad</p>
-            <p className="text-orange mb-5 text-[9px] uppercase tracking-[0.3em]">Nig Enterprises</p>
+            <p className="text-orange mb-5 text-[9px] uppercase tracking-[0.3em]"> Enterprises</p>
             <p className="mb-6 max-w-xs text-sm leading-relaxed text-white/35">
               Nigeria&apos;s most trusted destination for premium traditional fabrics.
               Serving customers across Nigeria and the diaspora since 2009.
@@ -73,9 +81,9 @@ export function Footer() {
             <div key={heading}>
               <h4 className="mb-5 text-[10px] font-bold uppercase tracking-[0.25em] text-white">{heading}</h4>
               <ul className="space-y-3">
-                {items.map((item) => (
-                  <li key={item}>
-                    <a className="hover:text-orange text-sm text-white/35 transition-colors" href="#top">{item}</a>
+                {items.map(({ label, to }) => (
+                  <li key={label}>
+                    <Link className="hover:text-orange text-sm text-white/35 transition-colors" to={to}>{label}</Link>
                   </li>
                 ))}
               </ul>
@@ -84,14 +92,14 @@ export function Footer() {
         </div>
 
         <div className="flex flex-col items-center justify-between gap-4 border-t border-white/10 pt-8 sm:flex-row">
-          <p className="text-xs text-white/25">© 2026 Sekjad Nig Enterprises. All rights reserved.</p>
+          <p className="text-xs text-white/25">© 2026 Sekjad Enterprises. All rights reserved.</p>
           <div className="flex flex-wrap items-center justify-center gap-3 text-center text-xs text-white/25 sm:gap-5">
             <span>📍 Oyo, Nigeria</span>
-            <span>☎ +2348032071990 </span>
+            <span>☎ +2348107965151 </span>
           </div>
           <div className="flex gap-5">
-            <a className="text-xs text-white/25 transition-colors hover:text-white/50" href="#top">Privacy</a>
-            <a className="text-xs text-white/25 transition-colors hover:text-white/50" href="#top">Terms</a>
+            <Link className="text-xs text-white/25 transition-colors hover:text-white/50" to="/privacy">Privacy</Link>
+            <Link className="text-xs text-white/25 transition-colors hover:text-white/50" to="/terms">Terms</Link>
           </div>
         </div>
       </div>

@@ -7,6 +7,7 @@ import { useProduct } from '../../hooks/useProducts'
 import { useCategories } from '../../hooks/useCategories'
 import { useCart } from '../../hooks/useCart'
 import { useWishlist } from '../../hooks/useWishlist'
+import { ProductTags } from '../../components/products/ProductTags'
 
 const formatNaira = (value) => `₦${Number(value ?? 0).toLocaleString('en-NG')}`
 
@@ -115,6 +116,7 @@ export function ProductDetailsPage() {
               <h1 className="font-display text-3xl font-normal leading-tight text-[#111827] sm:text-4xl lg:text-5xl">
                 {product.name}
               </h1>
+              <ProductTags tags={product.tags} className="mt-4" />
 
               <div className="mt-4 flex items-center gap-3">
                 <span className="text-2xl font-bold text-[#E67E22]">{formatNaira(product.price)}</span>

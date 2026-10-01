@@ -2,135 +2,64 @@ import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { Eye, EyeOff, CheckCircle2 } from 'lucide-react'
+import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom'
+import { Eye, EyeOff } from 'lucide-react'
 import { AuthLayout } from '../../../components/auth/AuthLayout'
-import { fieldClass, FieldError } from '../../../components/auth/formHelpers'
+import { fieldClass, FieldError } from '../../../components/auth/FormHelpers'
+import { authService } from '../../../services/auth.service'
+import { applyApiFieldErrors, getApiError, getRateLimitSeconds } from '../../../services/api'
+import { useRateLimit } from '../../../hooks/useRateLimit'
+import { useAuth } from '../../../hooks/useAuth'
 
-const resetPasswordSchema = z
-  .object({
-    password: z
-      .string()
-      .min(8, 'Password must be at least 8 characters')
-      .regex(/[A-Z]/, 'Include at least one uppercase letter')
-      .regex(/[0-9]/, 'Include at least one number'),
-    confirmPassword: z.string().min(1, 'Confirm your password'),
-  })
-  .refine((data) => data.password === data.confirmPassword, {
-    message: 'Passwords do not match',
-    path: ['confirmPassword'],
-  })
+const schema = z.object({
+  code: z.string().regex(/^\d{6}$/, 'Enter the 6-digit code'),
+  password: z.string().min(8, 'Password must be at least 8 characters'),
+  confirmPassword: z.string().min(1, 'Confirm your password'),
+}).refine((value) => value.password === value.confirmPassword, {
+  path: ['confirmPassword'], message: 'Passwords do not match',
+})
 
 export function ResetPassword() {
   const navigate = useNavigate()
   const location = useLocation()
-  const { email, otp } = location.state ?? {}
-
+  const email = location.state?.email
+  const { clearSession } = useAuth()
   const [showPassword, setShowPassword] = useState(false)
-  const [showConfirm, setShowConfirm] = useState(false)
-  const [done, setDone] = useState(false)
-
-  const {
-    register,
-    handleSubmit,
-    formState: { errors, isSubmitting },
-  } = useForm({
-    resolver: zodResolver(resetPasswordSchema),
-    defaultValues: { password: '', confirmPassword: '' },
+  const [authError, setAuthError] = useState('')
+  const { rateLimitSeconds, startRateLimit } = useRateLimit()
+  const { register, handleSubmit, setError, formState: { errors, isSubmitting } } = useForm({
+    resolver: zodResolver(schema), defaultValues: { code: '', password: '', confirmPassword: '' },
   })
 
-  const onSubmit = async (data) => {
-    // Replace with your real "reset password" API call — send email/otp + data.password
-    await new Promise((resolve) => setTimeout(resolve, 900))
-    console.log('Reset password payload:', { email, otp, password: data.password })
-    setDone(true)
+  if (!email) return <Navigate to="/forgot-password" replace />
+
+  const onSubmit = async (values) => {
+    setAuthError('')
+    try {
+      const response = await authService.resetPassword({ email, ...values })
+      clearSession()
+      navigate('/login', { replace: true, state: { message: response.message } })
+    } catch (error) {
+      applyApiFieldErrors(error, setError)
+      setAuthError(getApiError(error, 'Unable to reset your password. Please try again.'))
+      startRateLimit(getRateLimitSeconds(error))
+    }
   }
 
   return (
     <AuthLayout eyebrow="Where Elegance Meets Tradition" headingLines={['Almost There', 'Choose a New Password']}>
-      {done ? (
-        <>
-          <div className="mb-6 flex size-14 items-center justify-center rounded-2xl border border-green-200 bg-green-50 text-green-600">
-            <CheckCircle2 size={24} strokeWidth={1.5} />
-          </div>
-          <h2 className="font-display text-ink mb-2 text-3xl font-normal sm:text-4xl">Password reset</h2>
-          <p className="mb-8 text-sm leading-relaxed text-ink/50">
-            Your password has been updated successfully. You can now log in with your new password.
-          </p>
-          <button
-            type="button"
-            onClick={() => navigate('/login')}
-            className="bg-orange w-full rounded-full py-3.5 text-sm font-semibold text-white transition hover:bg-[#d4711f]"
-          >
-            Back to Log In
-          </button>
-        </>
-      ) : (
-        <>
-          <h2 className="font-display text-ink mb-2 text-3xl font-normal sm:text-4xl">Set new password</h2>
-          <p className="mb-8 text-sm text-ink/50">
-            Your new password must be different from previously used passwords.
-          </p>
-
-          <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-4">
-            <div>
-              <div className="relative">
-                <input
-                  type={showPassword ? 'text' : 'password'}
-                  placeholder="New Password"
-                  autoComplete="new-password"
-                  className={fieldClass(errors.password, 'pr-11')}
-                  {...register('password')}
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword((value) => !value)}
-                  aria-label={showPassword ? 'Hide password' : 'Show password'}
-                  className="absolute inset-y-0 right-0 flex w-11 items-center justify-center text-ink/40 hover:text-ink/70"
-                >
-                  {showPassword ? <EyeOff size={17} /> : <Eye size={17} />}
-                </button>
-              </div>
-              <FieldError message={errors.password?.message} />
-            </div>
-
-            <div>
-              <div className="relative">
-                <input
-                  type={showConfirm ? 'text' : 'password'}
-                  placeholder="Confirm New Password"
-                  autoComplete="new-password"
-                  className={fieldClass(errors.confirmPassword, 'pr-11')}
-                  {...register('confirmPassword')}
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowConfirm((value) => !value)}
-                  aria-label={showConfirm ? 'Hide password' : 'Show password'}
-                  className="absolute inset-y-0 right-0 flex w-11 items-center justify-center text-ink/40 hover:text-ink/70"
-                >
-                  {showConfirm ? <EyeOff size={17} /> : <Eye size={17} />}
-                </button>
-              </div>
-              <FieldError message={errors.confirmPassword?.message} />
-            </div>
-
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              className="bg-orange mt-2 w-full rounded-full py-3.5 text-sm font-semibold text-white transition hover:bg-[#d4711f] disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              {isSubmitting ? 'Resetting…' : 'Reset Password'}
-            </button>
-          </form>
-        </>
-      )}
-
-      <p className="mt-8 text-center text-sm text-ink/50">
-        <Link to="/login" className="text-orange font-semibold hover:underline">
-          Back to Log In
-        </Link>
-      </p>
+      <h2 className="font-display text-ink mb-2 text-3xl sm:text-4xl">Set new password</h2>
+      <p className="mb-4 text-sm text-ink/50">Enter the code sent to <span className="text-ink font-medium">{email}</span> and choose a new password.</p>
+      {location.state?.message && <div role="status" className="mb-5 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">{location.state.message}</div>}
+      {authError && <div role="alert" className="mb-5 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">{authError}</div>}
+      <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-4">
+        <div><input aria-label="Reset code" inputMode="numeric" autoComplete="one-time-code" maxLength={6} placeholder="6-digit code" className={fieldClass(errors.code)} {...register('code')} /><FieldError message={errors.code?.message} /></div>
+        <div className="relative"><input aria-label="New password" type={showPassword ? 'text' : 'password'} placeholder="New Password" autoComplete="new-password" className={fieldClass(errors.password, 'pr-11')} {...register('password')} /><button type="button" onClick={() => setShowPassword((value) => !value)} aria-label={showPassword ? 'Hide password' : 'Show password'} className="absolute inset-y-0 right-0 w-11 text-ink/40">{showPassword ? <EyeOff className="mx-auto" size={17} /> : <Eye className="mx-auto" size={17} />}</button></div>
+        <FieldError message={errors.password?.message} />
+        <div><input aria-label="Confirm new password" type="password" placeholder="Confirm New Password" autoComplete="new-password" className={fieldClass(errors.confirmPassword)} {...register('confirmPassword')} /><FieldError message={errors.confirmPassword?.message} /></div>
+        <button type="submit" disabled={isSubmitting || rateLimitSeconds > 0} className="bg-orange w-full rounded-full py-3.5 text-sm font-semibold text-white disabled:opacity-60">{isSubmitting ? 'Resetting…' : rateLimitSeconds ? `Try again in ${rateLimitSeconds}s` : 'Reset Password'}</button>
+      </form>
+      <p className="mt-8 text-center text-sm text-ink/50"><Link to="/login" className="text-orange font-semibold hover:underline">Back to Log In</Link></p>
     </AuthLayout>
   )
 }

@@ -195,10 +195,8 @@ export function ShopPage() {
           <div className="mb-6 flex items-center justify-between gap-3">
             <p className="text-[#6B7280] text-sm">
               {search ? (
-                <>Search results for &ldquo;{search}&rdquo; — <span className="text-[#111827] font-medium">{total} products found</span></>
-              ) : (
-                <span className="text-[#111827] font-medium">{total} Products</span>
-              )}
+                <>Search results for &ldquo;{search}&rdquo; </>
+              ) : null}
             </p>
 
             <div className="flex items-center gap-2.5">

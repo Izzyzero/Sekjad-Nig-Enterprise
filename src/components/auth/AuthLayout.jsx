@@ -30,7 +30,7 @@ export function AuthLayout({ eyebrow, headingLines = [], children }) {
         <div className="relative flex h-full flex-col justify-between p-10 xl:p-12">
           <Link to="/" className="flex flex-col gap-0.5">
             <p className="font-display text-xl font-semibold tracking-tight text-white">Sekjad</p>
-            <p className="text-orange text-[9px] font-medium uppercase tracking-[0.3em]">Nig Enterprises</p>
+            <p className="text-orange text-[9px] font-medium uppercase tracking-[0.3em]">Enterprise</p>
           </Link>
 
           <div className="max-w-md">
@@ -64,7 +64,7 @@ export function AuthLayout({ eyebrow, headingLines = [], children }) {
       <div className="flex w-full flex-col justify-center px-6 py-12 sm:px-10 sm:py-16 lg:w-1/2 lg:px-16 xl:px-20">
         <Link to="/" className="mb-8 flex flex-col gap-0.5 lg:hidden">
           <p className="font-display text-lg font-semibold tracking-tight text-charcoal">Sekjad</p>
-          <p className="text-orange text-[9px] font-medium uppercase tracking-[0.3em]">Nig Enterprises</p>
+          <p className="text-orange text-[9px] font-medium uppercase tracking-[0.3em]">Enterprise</p>
         </Link>
 
         <div className="mx-auto w-full max-w-md">{children}</div>

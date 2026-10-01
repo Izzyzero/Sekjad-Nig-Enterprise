@@ -1,20 +1,18 @@
-import { api } from './api'
+import { api, refreshAccessToken } from './api.js'
+
+const data = ({ data: response }) => response
 
 export const authService = {
-  login: (credentials) => api.post('/auth/login/', credentials).then(({ data }) => data),
-  register: (details) => api.post('/auth/register/', details).then(({ data }) => data),
-  refresh: () =>
-    api
-      .post('/auth/refresh/')
-      .then(({ data }) => data)
-      .catch((error) => {
-        console.error('Auth refresh failed:', {
-          status: error?.response?.status,
-          data: error?.response?.data,
-          message: error?.message,
-        })
-        throw error
-      }),
-  me: () => api.get('/auth/me/').then(({ data }) => data),
-  logout: () => api.post('/auth/logout/').then(({ data }) => data),
+  google: (credential) => api.post('/auth/google', { credential }, { skipAuthRefresh: true }).then(data),
+  login: (details) => api.post('/auth/login', details, { skipAuthRefresh: true }).then(data),
+  register: (details) => api.post('/auth/register', details, { skipAuthRefresh: true }).then(data),
+  verifyEmail: (details) => api.post('/auth/verify-email', details, { skipAuthRefresh: true }).then(data),
+  forgotPassword: (details) => api.post('/auth/forgot-password', details, { skipAuthRefresh: true }).then(data),
+  resetPassword: (details) => api.post('/auth/reset-password', details, { skipAuthRefresh: true }).then(data),
+  refresh: (options) => refreshAccessToken(options),
+  me: () => api.get('/auth/me', { skipAuthRefresh: true }).then(data),
+  updateProfile: (details) => api.patch('/auth/me', details, { skipAuthRefresh: true }).then(data),
+  verifyProfileEmail: (details) => api.post('/auth/me/verify-email', details, { skipAuthRefresh: true }).then(data),
+  changePassword: (details) => api.post('/auth/change-password', details, { skipAuthRefresh: true }).then(data),
+  logout: () => api.post('/auth/logout', undefined, { skipAuthRefresh: true }).then(data),
 }

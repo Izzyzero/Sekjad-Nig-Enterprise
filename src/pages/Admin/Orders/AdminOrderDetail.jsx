@@ -1,7 +1,9 @@
 import { useParams, Link } from 'react-router-dom'
-import { ArrowLeft } from 'lucide-react'
-import { useAdminOrder, useUpdateOrderStatus } from '../../../hooks/useOrders'
-import { OrderStatusBadge, ORDER_STATUSES } from '../../../components/admin/OrdersStatusBadge'
+import { ArrowLeft, CheckCircle2 } from 'lucide-react'
+import { useAdminOrder, useConfirmWhatsAppOrder, useUpdateOrderStatus } from '../../../hooks/useOrders'
+import { OrderStatusBadge } from '../../../components/admin/OrdersStatusBadge'
+import { ORDER_STATUSES } from '../../../utils/orderStatus'
+import { isWhatsAppOrder } from '../../../services/order.service'
 
 function formatNaira(value) {
   return `₦${Number(value).toLocaleString('en-NG')}`
@@ -15,6 +17,12 @@ export function AdminOrderDetailPage() {
   const { id } = useParams()
   const { data: order, isLoading, isError } = useAdminOrder(id)
   const updateStatus = useUpdateOrderStatus()
+  const confirmWhatsAppOrder = useConfirmWhatsAppOrder()
+  const pendingStatusValues = new Set(['pending', 'awaiting_payment', 'awaiting-payment', 'unpaid', 'not_paid'])
+  const orderPaymentStatus = String(order?.paymentStatus ?? order?.status ?? '').trim().toLowerCase()
+  const isPendingWhatsAppOrder =
+    pendingStatusValues.has(orderPaymentStatus) &&
+    isWhatsAppOrder(order)
 
   if (isLoading) return <p className="text-[#6B7280] text-sm">Loading order…</p>
   if (isError || !order) return <p className="text-[#EF4444] text-sm">Couldn&apos;t load this order.</p>
@@ -27,7 +35,7 @@ export function AdminOrderDetailPage() {
 
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="font-display text-[#111827] text-2xl font-normal">Order #{order.orderNumber ?? order.id}</h1>
+          <h1 className="font-display break-all text-[#111827] text-2xl font-normal">Order #{order.orderNumber ?? order.id}</h1>
           <p className="text-[#6B7280] mt-1 text-sm">Placed on {formatDate(order.createdAt)}</p>
         </div>
         <OrderStatusBadge status={order.status} />
@@ -52,13 +60,25 @@ export function AdminOrderDetailPage() {
             </button>
           ))}
         </div>
+
+        {isPendingWhatsAppOrder && (
+          <button
+            type="button"
+            onClick={() => confirmWhatsAppOrder.mutate(id)}
+            disabled={confirmWhatsAppOrder.isPending}
+            className="mt-4 inline-flex items-center gap-2 rounded-full bg-[#E67E22] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#d76a14] disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            <CheckCircle2 size={15} />
+            {confirmWhatsAppOrder.isPending ? 'Confirming payment...' : 'Confirm WhatsApp order as paid'}
+          </button>
+        )}
       </div>
 
       <div className="mb-6 grid gap-4 sm:grid-cols-2">
         <div className="rounded-2xl border border-[#E5E7EB] bg-white p-5">
           <h3 className="text-[#111827] mb-3 text-sm font-semibold">Customer</h3>
           <p className="text-[#111827] text-sm">{order.customerName}</p>
-          <p className="text-[#6B7280] text-sm">{order.customerEmail}</p>
+          <p className="break-all text-[#6B7280] text-sm">{order.customerEmail}</p>
           {order.customerPhone && <p className="text-[#6B7280] text-sm">{order.customerPhone}</p>}
         </div>
         <div className="rounded-2xl border border-[#E5E7EB] bg-white p-5">
@@ -72,14 +92,17 @@ export function AdminOrderDetailPage() {
           <h3 className="text-[#111827] text-sm font-semibold">Items</h3>
         </div>
         <ul>
-          {(order.items ?? []).map((item) => (
-            <li key={item.id} className="flex items-center justify-between border-b border-[#E5E7EB] px-5 py-3.5 last:border-none">
-              <div className="flex items-center gap-3">
+          {order.items.length === 0 && (
+            <li className="px-5 py-5 text-sm text-[#6B7280]">No items were included with this order.</li>
+          )}
+          {order.items.map((item) => (
+            <li key={item.id} className="flex min-w-0 flex-wrap items-center justify-between gap-3 border-b border-[#E5E7EB] px-5 py-3.5 last:border-none">
+              <div className="flex min-w-0 items-center gap-3">
                 <div className="size-12 shrink-0 overflow-hidden rounded-lg bg-stone-100">
                   {item.image && <img src={item.image} alt={item.name} className="h-full w-full object-cover" />}
                 </div>
-                <div>
-                  <p className="text-[#111827] text-sm font-medium">{item.name}</p>
+                <div className="min-w-0">
+                  <p className="break-words text-[#111827] text-sm font-medium">{item.name}</p>
                   <p className="text-[#6B7280] text-xs">Qty: {item.quantity}</p>
                 </div>
               </div>

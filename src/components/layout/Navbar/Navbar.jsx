@@ -10,14 +10,14 @@ const PUBLIC_NAV_LINKS = [
   { label: 'Collections', href: '#collections' },
   { label: 'New Arrivals', href: '#new-arrivals' },
   { label: 'Contact', href: '#contact' },
-  { label: 'About Us', href: '/about-us' },
+  { label: 'About Us', href: '#about-us' },
 ]
 
 const AUTH_NAV_LINKS = [
   { label: 'Home', href: '/home' },
   { label: 'Shop', href: '/shop' },
-  { label: 'Gallery', href: '/gallery' },
   { label: 'About Us', href: '/about-us' },
+   { label: 'Contact', href: '/contact' },
 ]
 
 const ADMIN_NAV_LINK = { label: 'Admin', href: '/admin' }
@@ -102,7 +102,7 @@ export function Navbar({
                 Sekjad
               </p>
               <p className="text-orange text-[9px] font-medium uppercase tracking-[0.3em]">
-                Nig Enterprises
+                Enterprise
               </p>
             </Link>
 
@@ -216,7 +216,7 @@ export function Navbar({
         <div className="flex items-center justify-between border-b border-gray-100 px-5 py-4">
           <a href="#top" onClick={closeMenu} className="leading-none">
             <p className="text-charcoal font-display text-lg font-semibold tracking-tight">Sekjad</p>
-            <p className="text-orange text-[9px] font-medium uppercase tracking-[0.3em]">Nig Enterprises</p>
+            <p className="text-orange text-[9px] font-medium uppercase tracking-[0.3em]">Enterprise</p>
           </a>
           <button type="button" onClick={closeMenu} aria-label="Close menu"
             className="text-charcoal/60 hover:text-charcoal rounded-full p-1.5 transition-colors">

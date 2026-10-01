@@ -103,7 +103,7 @@ export async function getProducts(params = {}) {
 }
 
 export async function getProduct(id) {
-  const { data } = await api.get(`/products/${id}`)
+  const { data } = await api.get(`/products/${encodeURIComponent(id)}`)
   return normalizeProduct(data?.data ?? data)
 }
 

@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react'
-import { ArrowRight, Check, Gem, HeartHandshake, Leaf, MapPin, Sparkles } from 'lucide-react'
+import { ArrowRight, Check, Gem, HeartHandshake, Leaf, MapPin } from 'lucide-react'
 import { Link } from 'react-router-dom'
 
 import { Navbar } from '../../components/layout/Navbar/Navbar'
 import { Footer } from '../../components/layout/Footer/Footer'
 import heroImg from '../../assets/images/heroImg.jpg'
 import AsoOke from '../../assets/images/AsoOke.jpg'
-import Brocade from '../../assets/images/Brocade.jpg'
+// import Brocade from '../../assets/images/Brocade.jpg'
+import africanWoman from '../../assets/images/africanWoman.avif'
 
 const values = [
   {
@@ -135,7 +136,7 @@ export function AboutPage() {
                   <p className="font-display text-xl text-orange sm:text-2xl">{year}</p>
                   <div>
                     <p className="text-sm leading-7 text-white/60 sm:text-base">{text}</p>
-                    {index === milestones.length - 1 && <Sparkles className="mt-4 text-orange" size={18} />}
+                    {index === milestones.length - 1}
                   </div>
                 </div>
               ))}
@@ -146,7 +147,7 @@ export function AboutPage() {
         <section className="bg-cream py-16 sm:py-24 lg:py-28">
           <div className="mx-auto grid max-w-7xl gap-6 px-5 sm:px-8 lg:grid-cols-2">
             <div className="relative min-h-[420px] overflow-hidden rounded-3xl sm:min-h-[540px]">
-              <img src={Brocade} alt="Premium brocade fabric from the Sekjad collection" className="absolute inset-0 h-full w-full object-cover" />
+              <img src={africanWoman} alt="Premium brocade fabric from the Sekjad collection" className="absolute inset-0 h-full w-full object-cover" />
               <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
               <div className="absolute inset-x-0 bottom-0 p-8 sm:p-10">
                 <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.3em] text-orange">Our collection</p>
@@ -164,7 +165,7 @@ export function AboutPage() {
                 <Link to="/shop" className="inline-flex items-center justify-center gap-2 rounded-full bg-orange px-7 py-3.5 text-sm font-semibold text-white transition hover:bg-[#d4711f]">
                   Explore our fabrics <ArrowRight size={15} />
                 </Link>
-                <Link to="/home#contact" className="inline-flex items-center justify-center rounded-full border border-charcoal/20 px-7 py-3.5 text-sm font-semibold text-charcoal transition hover:border-charcoal/50">
+                <Link to="/contact" className="inline-flex items-center justify-center rounded-full border border-charcoal/20 px-7 py-3.5 text-sm font-semibold text-charcoal transition hover:border-charcoal/50">
                   Contact us
                 </Link>
               </div>

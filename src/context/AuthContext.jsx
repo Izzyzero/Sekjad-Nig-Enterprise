@@ -1,20 +1,18 @@
 import { createContext, useCallback, useEffect, useMemo, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { authService } from '../services/auth.service'
-import { setAccessToken } from '../services/api'
+import { setAccessToken, setAuthenticationFailureHandler } from '../services/api'
 
-
+// Kept with the provider to preserve the project's existing context/hook pattern.
+// eslint-disable-next-line react-refresh/only-export-components
 export const AuthContext = createContext(null)
 
-const getPayload = (response) => response?.data ?? response ?? {}
-const getToken = (payload) =>
-  payload?.accessToken ??
-  payload?.data?.accessToken ??
-  payload?.access_token ??
-  payload?.token ??
-  null
-const getUser = (payload) => payload?.user ?? payload?.data?.user ?? payload?.profile ?? null
+const payloadOf = (response) => response?.data ?? response ?? {}
+const tokenOf = (response) => payloadOf(response)?.accessToken ?? null
+const userOf = (response) => payloadOf(response)?.user ?? null
 
 export function AuthProvider({ children }) {
+  const navigate = useNavigate()
   const [user, setUser] = useState(null)
   const [accessToken, setToken] = useState(null)
   const [isAuthLoading, setIsAuthLoading] = useState(true)
@@ -23,98 +21,62 @@ export function AuthProvider({ children }) {
     setAccessToken(null)
     setToken(null)
     setUser(null)
-    
   }, [])
 
-  const applySession = useCallback((response) => {
-    const payload = getPayload(response)
-    const token = getToken(payload)
-    const nextUser = getUser(payload)
-
-    if (token) {
-      setAccessToken(token)
-      setToken(token)
-    } else {
-      setAccessToken(null)
-      setToken(null)
-    }
-
-    if (nextUser) {
-      setUser(nextUser)
-    } else if (response === null) {
-      setUser(null)
-    }
-
-    return response
+  const applyToken = useCallback((response) => {
+    const token = tokenOf(response)
+    setAccessToken(token)
+    setToken(token)
+    return token
   }, [])
+
+  useEffect(() => setAuthenticationFailureHandler(() => {
+    clearSession()
+    navigate('/login', { replace: true })
+  }), [clearSession, navigate])
 
   useEffect(() => {
     let active = true
-
-    authService.refresh()
+    authService.refresh({ notifyOnFailure: false })
       .then(async (response) => {
         if (!active) return
-
-        applySession(response)
-
-        const userResponse = await authService.me()
-        if (!active) return
-
-        const payload = getPayload(userResponse)
-        setUser(getUser(payload) ?? payload)
+        applyToken(response)
+        const me = await authService.me()
+        if (active) setUser(userOf(me) ?? payloadOf(me))
       })
-      .catch((error) => {
-        console.error('AuthProvider refresh error:', {
-          status: error?.response?.status,
-          data: error?.response?.data,
-          message: error?.message,
-        })
+      .catch(() => {
         if (active) clearSession()
       })
       .finally(() => {
         if (active) setIsAuthLoading(false)
       })
-
-    return () => {
-      active = false
-    }
-  }, [applySession, clearSession])
+    return () => { active = false }
+  }, [applyToken, clearSession])
 
   const login = useCallback(async (credentials) => {
     const response = await authService.login(credentials)
-    applySession(response)
+    applyToken(response)
+    const nextUser = userOf(response)
+    setUser(nextUser)
+    return nextUser
+  }, [applyToken])
 
-    let loggedInUser = getUser(getPayload(response))
-
-    // Some login endpoints return only tokens. Fetch the profile so callers
-    // can safely decide where to send the user based on their server-side role.
-    if (!loggedInUser) {
-      const userResponse = await authService.me()
-      const payload = getPayload(userResponse)
-      loggedInUser = getUser(payload) ?? payload
-      setUser(loggedInUser)
-    }
-
-    return loggedInUser
-  }, [applySession])
-
-  const register = useCallback(async (details) => {
-    const response = await authService.register(details)
-    return applySession(response)
-  }, [applySession])
+  const loginWithGoogle = useCallback(async (credential) => {
+    const response = await authService.google(credential)
+    if (!tokenOf(response) || !userOf(response)) throw new Error('Unable to complete Google sign-in. Please try again.')
+    applyToken(response)
+    const nextUser = userOf(response)
+    setUser(nextUser)
+    return nextUser
+  }, [applyToken])
 
   const logout = useCallback(async () => {
-    try {
-      await authService.logout()
-    } finally {
-      clearSession()
-    }
+    try { await authService.logout() } finally { clearSession() }
   }, [clearSession])
 
-  const value = useMemo(
-    () => ({ user, accessToken, isAuthenticated: Boolean(accessToken), isAuthLoading, login, register, logout }),
-    [user, accessToken, isAuthLoading, login, register, logout],
-  )
+  const value = useMemo(() => ({
+    user, updateUser: setUser, accessToken, isAuthenticated: Boolean(accessToken), isAuthLoading, login, loginWithGoogle, logout, clearSession,
+  }), [user, accessToken, isAuthLoading, login, loginWithGoogle, logout, clearSession])
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }

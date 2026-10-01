@@ -1,17 +1,6 @@
 import { useState } from 'react'
 import { useCategories } from '../../hooks/useCategories'
 
-export const COLORS = [
-  { name: 'Black', hex: '#111827' },
-  { name: 'White', hex: '#FFFFFF' },
-  { name: 'Gold', hex: '#D4A017' },
-  { name: 'Red', hex: '#DC2626' },
-  { name: 'Blue', hex: '#2563EB' },
-  { name: 'Green', hex: '#16A34A' },
-  { name: 'Purple', hex: '#9333EA' },
-  { name: 'Pink', hex: '#EC4899' },
-]
-
 function FilterSection({ title, children, defaultOpen = true }) {
   const [open, setOpen] = useState(defaultOpen)
   return (

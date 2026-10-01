@@ -1,26 +1,31 @@
+import { lazy, Suspense } from 'react'
 import { Navigate, Route, Routes } from "react-router-dom"
 
-import {LandingPage} from '../pages/Home/LandingPage'
-import {Register} from '../pages/Auth/Register/Register'
-import {Login} from '../pages/Auth/Login/Login'
-import {ForgotPasswordPage} from '../pages/Auth/ForgotPassword/ForgotPasswordPage'
-import {VerifyOtp} from '../pages/Auth/VerifyOTP/VerifyOtp'
-import {ResetPassword} from '../pages/Auth/ResetPassword/ResetPassword'
-import {Gallery} from '../pages/Gallery/Gallery'
-import {Profile} from '../pages/Account/Profile/Profile'
-import {Orders} from '../pages/Account/Orders/Orders'
-import {Wishlist} from '../pages/Account/Wishlist/Wishlist'
-import {ShopPage} from '../pages/Shop/ShopPage'
-import {ProductDetailsPage} from '../pages/Shop/ProductDetailsPage'
-import {CartPage} from '../pages/Cart/CartPage'
-import {AboutPage} from '../pages/About/AboutPage'
-import {AdminLayout} from '../components/admin/AdminLayout'
-import {AdminProductsPage} from '../pages/Admin/Products/AdminProduct'
-import {AdminProductFormPage} from '../pages/Admin/Products/AdminProductForm'
-import {AdminDashboardPage} from '../pages/Admin/Dashboard/AdminDashboard'
-import {AdminOrdersPage} from '../pages/Admin/Orders/AdminOrders'
-import {AdminOrderDetailPage} from '../pages/Admin/Orders/AdminOrderDetail'
-import {AdminCategoriesPage} from '../pages/Admin/Categories/AdminCategories'
+const LandingPage = lazy(() => import('../pages/Home/LandingPage').then((module) => ({ default: module.LandingPage })))
+const Register = lazy(() => import('../pages/Auth/Register/Register').then((module) => ({ default: module.Register })))
+const Login = lazy(() => import('../pages/Auth/Login/Login').then((module) => ({ default: module.Login })))
+const ForgotPasswordPage = lazy(() => import('../pages/Auth/ForgotPassword/ForgotPasswordPage').then((module) => ({ default: module.ForgotPasswordPage })))
+const VerifyOtp = lazy(() => import('../pages/Auth/VerifyOTP/VerifyOtp').then((module) => ({ default: module.VerifyOtp })))
+const ResetPassword = lazy(() => import('../pages/Auth/ResetPassword/ResetPassword').then((module) => ({ default: module.ResetPassword })))
+const Profile = lazy(() => import('../pages/Account/Profile/Profile').then((module) => ({ default: module.Profile })))
+const Orders = lazy(() => import('../pages/Account/Orders/Orders').then((module) => ({ default: module.Orders })))
+const Wishlist = lazy(() => import('../pages/Account/Wishlist/Wishlist').then((module) => ({ default: module.Wishlist })))
+const ShopPage = lazy(() => import('../pages/Shop/ShopPage').then((module) => ({ default: module.ShopPage })))
+const ProductDetailsPage = lazy(() => import('../pages/Shop/ProductDetailsPage').then((module) => ({ default: module.ProductDetailsPage })))
+const CartPage = lazy(() => import('../pages/Cart/CartPage').then((module) => ({ default: module.CartPage })))
+const CheckoutPage = lazy(() => import('../pages/Checkout/CheckoutPage').then((module) => ({ default: module.CheckoutPage })))
+const CheckoutReturnPage = lazy(() => import('../pages/Checkout/CheckoutPage').then((module) => ({ default: module.CheckoutReturnPage })))
+const AboutPage = lazy(() => import('../pages/About/AboutPage').then((module) => ({ default: module.AboutPage })))
+const ContactPage = lazy(() => import('../pages/Contact/ContactPage').then((module) => ({ default: module.ContactPage })))
+const LegalPage = lazy(() => import('../pages/Legal/LegalPage').then((module) => ({ default: module.LegalPage })))
+const NotFoundPage = lazy(() => import('../pages/NotFound/NotFoundPage').then((module) => ({ default: module.NotFoundPage })))
+const AdminLayout = lazy(() => import('../components/admin/AdminLayout').then((module) => ({ default: module.AdminLayout })))
+const AdminProductsPage = lazy(() => import('../pages/Admin/Products/AdminProduct').then((module) => ({ default: module.AdminProductsPage })))
+const AdminProductFormPage = lazy(() => import('../pages/Admin/Products/AdminProductForm').then((module) => ({ default: module.AdminProductFormPage })))
+const AdminDashboardPage = lazy(() => import('../pages/Admin/Dashboard/AdminDashboard').then((module) => ({ default: module.AdminDashboardPage })))
+const AdminOrdersPage = lazy(() => import('../pages/Admin/Orders/AdminOrders').then((module) => ({ default: module.AdminOrdersPage })))
+const AdminOrderDetailPage = lazy(() => import('../pages/Admin/Orders/AdminOrderDetail').then((module) => ({ default: module.AdminOrderDetailPage })))
+const AdminCategoriesPage = lazy(() => import('../pages/Admin/Categories/AdminCategories').then((module) => ({ default: module.AdminCategoriesPage })))
 import PrivateRoute from './PrivateRoute'
 import GuestRoute from './GuestRoute'
 import AdminRoute from './AdminRoute'
@@ -28,6 +33,7 @@ import AdminRoute from './AdminRoute'
 
 function AppRoutes() {
   return (
+ <Suspense fallback={<div className="grid min-h-screen place-items-center text-sm text-charcoal/60" role="status">Loading page...</div>}>
  <Routes>
    <Route
      path="/"
@@ -45,21 +51,18 @@ function AppRoutes() {
        </PrivateRoute>
      }
    />
-   <Route path="/register" element={<Register />} />
-   <Route path="/login" element={<Login />} />
-   <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-   <Route path="/verify-otp" element={<VerifyOtp />} />
-   <Route path="/reset-password" element={<ResetPassword />} />
+   <Route path="/register" element={<GuestRoute><Register /></GuestRoute>} />
+   <Route path="/login" element={<GuestRoute><Login /></GuestRoute>} />
+   <Route path="/forgot-password" element={<GuestRoute><ForgotPasswordPage /></GuestRoute>} />
+   <Route path="/verify-email" element={<GuestRoute><VerifyOtp /></GuestRoute>} />
+   <Route path="/verify-otp" element={<Navigate to="/verify-email" replace />} />
+   <Route path="/reset-password" element={<GuestRoute><ResetPassword /></GuestRoute>} />
    <Route path="/about-us" element={<AboutPage />} />
    <Route path="/about" element={<Navigate to="/about-us" replace />} />
-   <Route
-     path="/gallery"
-     element={
-       <PrivateRoute>
-         <Gallery />
-       </PrivateRoute>
-     }
-   />
+  <Route path="/terms" element={<LegalPage documentKey="terms" />} />
+  <Route path="/privacy" element={<LegalPage documentKey="privacy" />} />
+   <Route path="/contact" element={<PrivateRoute><ContactPage /></PrivateRoute>} />
+  
    <Route
      path="/profile"
      element={
@@ -108,6 +111,10 @@ function AppRoutes() {
        </PrivateRoute>
      }
    />
+   <Route path="/product/:id" element={<PrivateRoute><ProductDetailsPage /></PrivateRoute>} />
+   <Route path="/checkout" element={<PrivateRoute><CheckoutPage /></PrivateRoute>} />
+   <Route path="/checkout/return" element={<PrivateRoute><CheckoutReturnPage /></PrivateRoute>} />
+  <Route path="*" element={<NotFoundPage />} />
    <Route path="/admin" element={<AdminRoute><AdminLayout /></AdminRoute>}>
      <Route index element={<AdminDashboardPage />} />
      <Route path="products" element={<AdminProductsPage />} />
@@ -119,6 +126,7 @@ function AppRoutes() {
      <Route path="*" element={<Navigate to="/admin" replace />} />
    </Route>
  </Routes>
+ </Suspense>
   )
 }
 

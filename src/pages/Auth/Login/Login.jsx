@@ -2,13 +2,14 @@ import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { Eye, EyeOff } from 'lucide-react'
-import { FcGoogle } from 'react-icons/fc'
+import { GoogleSignIn } from '../../../components/auth/GoogleSignIn'
 import { AuthLayout } from '../../../components/auth/AuthLayout'
 import { fieldClass, FieldError } from '../../../components/auth/FormHelpers'
 import { useAuth } from '../../../hooks/useAuth'
-import { getApiError } from '../../../services/api'
+import { applyApiFieldErrors, getApiError, getRateLimitSeconds } from '../../../services/api'
+import { useRateLimit } from '../../../hooks/useRateLimit'
 
 const loginSchema = z.object({
   email: z.string().trim().min(1, 'Enter your email').email('Enter a valid email address'),
@@ -18,13 +19,16 @@ const loginSchema = z.object({
 
 export function Login() {
   const navigate = useNavigate()
+  const location = useLocation()
   const { login } = useAuth()
   const [showPassword, setShowPassword] = useState(false)
   const [authError, setAuthError] = useState('')
+  const { rateLimitSeconds, startRateLimit } = useRateLimit()
 
   const {
     register,
     handleSubmit,
+    setError,
     formState: { errors, isSubmitting },
   } = useForm({
     resolver: zodResolver(loginSchema),
@@ -36,9 +40,11 @@ export function Login() {
     try {
       const credentials = { email: data.email, password: data.password }
       await login(credentials)
-      navigate('/home', { replace: true })
+      navigate(location.state?.from ? { pathname: location.state.from.pathname, search: location.state.from.search, hash: location.state.from.hash } : '/home', { replace: true })
     } catch (error) {
+      applyApiFieldErrors(error, setError)
       setAuthError(getApiError(error, 'Incorrect email or password. Please try again.'))
+      startRateLimit(getRateLimitSeconds(error))
     }
   }
 
@@ -47,8 +53,14 @@ export function Login() {
       <h2 className="font-display text-ink mb-2 text-3xl font-normal sm:text-4xl">Welcome back</h2>
       <p className="mb-8 text-sm text-ink/50">Log in to continue shopping premium Nigerian fabrics</p>
 
+      {location.state?.message && (
+        <div role="status" className="mb-5 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
+          {location.state.message}
+        </div>
+      )}
+
       {authError && (
-        <div className="mb-5 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
+        <div role="alert" className="mb-5 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
           {authError}
         </div>
       )}
@@ -102,26 +114,14 @@ export function Login() {
 
         <button
           type="submit"
-          disabled={isSubmitting}
+          disabled={isSubmitting || rateLimitSeconds > 0}
           className="bg-orange mt-2 w-full rounded-full py-3.5 text-sm font-semibold text-white transition hover:bg-[#d4711f] disabled:cursor-not-allowed disabled:opacity-60"
         >
-          {isSubmitting ? 'Logging in…' : 'Log In'}
+          {isSubmitting ? 'Logging in…' : rateLimitSeconds ? `Try again in ${rateLimitSeconds}s` : 'Log In'}
         </button>
       </form>
 
-      <div className="my-6 flex items-center gap-4">
-        <div className="h-px flex-1 bg-stone-200" />
-        <span className="text-xs text-ink/40">or continue with</span>
-        <div className="h-px flex-1 bg-stone-200" />
-      </div>
-
-      <button
-        type="button"
-        className="flex w-full items-center justify-center gap-3 rounded-full border border-stone-300 py-3 text-sm font-medium text-ink/80 transition hover:border-stone-400"
-      >
-        <FcGoogle size={18} />
-        Continue with Google
-      </button>
+      <GoogleSignIn disabled={isSubmitting || rateLimitSeconds > 0} />
 
       <p className="mt-8 text-center text-sm text-ink/50">
         Don&apos;t have an account?{' '}

@@ -3,106 +3,42 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { Link, useNavigate } from 'react-router-dom'
-import { Mail } from 'lucide-react'
 import { AuthLayout } from '../../../components/auth/AuthLayout'
-import { fieldClass, FieldError } from '../../../components/auth/formHelpers'
+import { fieldClass, FieldError } from '../../../components/auth/FormHelpers'
+import { authService } from '../../../services/auth.service'
+import { applyApiFieldErrors, getApiError, getRateLimitSeconds } from '../../../services/api'
+import { useRateLimit } from '../../../hooks/useRateLimit'
 
-const forgotPasswordSchema = z.object({
-  email: z.string().trim().min(1, 'Enter your email').email('Enter a valid email address'),
-})
+const schema = z.object({ email: z.string().trim().min(1, 'Enter your email').email('Enter a valid email address') })
 
 export function ForgotPasswordPage() {
   const navigate = useNavigate()
-  const [sent, setSent] = useState(false)
-  const [sentEmail, setSentEmail] = useState('')
+  const [authError, setAuthError] = useState('')
+  const { rateLimitSeconds, startRateLimit } = useRateLimit()
+  const { register, handleSubmit, setError, formState: { errors, isSubmitting } } = useForm({ resolver: zodResolver(schema), defaultValues: { email: '' } })
 
-  const {
-    register,
-    handleSubmit,
-    formState: { errors, isSubmitting },
-  } = useForm({
-    resolver: zodResolver(forgotPasswordSchema),
-    defaultValues: { email: '' },
-  })
-
-  const onSubmit = async (data) => {
-    // Replace with your real "send reset code" API call
-    await new Promise((resolve) => setTimeout(resolve, 900))
-    console.log('Forgot password payload:', data)
-    setSentEmail(data.email)
-    setSent(true)
+  const onSubmit = async ({ email }) => {
+    setAuthError('')
+    try {
+      const response = await authService.forgotPassword({ email })
+      navigate('/reset-password', { state: { email, message: response.message } })
+    } catch (error) {
+      applyApiFieldErrors(error, setError)
+      setAuthError(getApiError(error, 'Unable to send a reset code. Please try again.'))
+      startRateLimit(getRateLimitSeconds(error))
+    }
   }
 
-  const goToVerify = () => navigate('/verify-otp', { state: { email: sentEmail } })
-
   return (
-    <AuthLayout
-      eyebrow="Where Elegance Meets Tradition"
-      headingLines={["Let's Get You", 'Back Into Your Account']}
-    >
-      {sent ? (
-        <>
-          <div className="border-orange/25 bg-orange/10 text-orange mb-6 flex size-14 items-center justify-center rounded-2xl border">
-            <Mail size={24} strokeWidth={1.5} />
-          </div>
-          <h2 className="font-display text-ink mb-2 text-3xl font-normal sm:text-4xl">Check your email</h2>
-          <p className="mb-8 text-sm leading-relaxed text-ink/50">
-            We&apos;ve sent a 6-digit verification code to{' '}
-            <span className="text-ink font-medium">{sentEmail}</span>. Enter it on the next screen to reset your
-            password.
-          </p>
-
-          <button
-            type="button"
-            onClick={goToVerify}
-            className="bg-orange w-full rounded-full py-3.5 text-sm font-semibold text-white transition hover:bg-[#d4711f]"
-          >
-            Enter Verification Code
-          </button>
-
-          <p className="mt-6 text-center text-sm text-ink/50">
-            Didn&apos;t get the email?{' '}
-            <button type="button" onClick={() => setSent(false)} className="text-orange font-semibold hover:underline">
-              Try a different address
-            </button>
-          </p>
-        </>
-      ) : (
-        <>
-          <h2 className="font-display text-ink mb-2 text-3xl font-normal sm:text-4xl">Forgot password?</h2>
-          <p className="mb-8 text-sm text-ink/50">
-            No worries — enter the email linked to your account and we&apos;ll send you a code to reset it.
-          </p>
-
-          <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-4">
-            <div>
-              <input
-                type="email"
-                placeholder="Email Address"
-                autoComplete="email"
-                className={fieldClass(errors.email)}
-                {...register('email')}
-              />
-              <FieldError message={errors.email?.message} />
-            </div>
-
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              className="bg-orange mt-2 w-full rounded-full py-3.5 text-sm font-semibold text-white transition hover:bg-[#d4711f] disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              {isSubmitting ? 'Sending…' : 'Send Reset Code'}
-            </button>
-          </form>
-        </>
-      )}
-
-      <p className="mt-8 text-center text-sm text-ink/50">
-        Remember your password?{' '}
-        <Link to="/login" className="text-orange font-semibold hover:underline">
-          Log in
-        </Link>
-      </p>
+    <AuthLayout eyebrow="Where Elegance Meets Tradition" headingLines={["Let's Get You", 'Back Into Your Account']}>
+      <h2 className="font-display text-ink mb-2 text-3xl sm:text-4xl">Forgot password?</h2>
+      <p className="mb-8 text-sm text-ink/50">Enter the email linked to your account and we’ll send you a reset code.</p>
+      {authError && <div role="alert" className="mb-5 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">{authError}</div>}
+      <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-4">
+        <div><input aria-label="Email" type="email" placeholder="Email Address" autoComplete="email" className={fieldClass(errors.email)} {...register('email')} /><FieldError message={errors.email?.message} /></div>
+        <button type="submit" disabled={isSubmitting || rateLimitSeconds > 0} className="bg-orange w-full rounded-full py-3.5 text-sm font-semibold text-white disabled:opacity-60">{isSubmitting ? 'Sending…' : rateLimitSeconds ? `Try again in ${rateLimitSeconds}s` : 'Send Reset Code'}</button>
+      </form>
+      <p className="mt-8 text-center text-sm text-ink/50">Remember your password? <Link to="/login" className="text-orange font-semibold hover:underline">Log in</Link></p>
     </AuthLayout>
   )
 }

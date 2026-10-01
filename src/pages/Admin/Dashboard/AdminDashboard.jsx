@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import { DollarSign, ShoppingBag, Package, Users } from 'lucide-react'
 import { useDashboardStats } from '../../../hooks/useDashboard'
+import { useAdminOrders } from '../../../hooks/useOrders'
+import { useAdminProducts } from '../../../hooks/useProducts'
 import { StatCard } from '../../../components/admin/StatCard'
 import { RecentOrdersList } from '../../../components/admin/RecentOrderList'
 
@@ -17,6 +19,9 @@ function formatNaira(value) {
 export function AdminDashboardPage() {
   const [range, setRange] = useState('30d')
   const { data, isLoading, isError, refetch } = useDashboardStats(range)
+  const { data: recentOrdersData, isLoading: ordersLoading, isError: ordersError, refetch: refetchOrders } = useAdminOrders({ page: 1, limit: 10 })
+  const { data: productData } = useAdminProducts({ page: 1, limit: 1 })
+  const stats = data?.data ?? data
 
   return (
     <div>
@@ -53,18 +58,28 @@ export function AdminDashboardPage() {
         </div>
       )}
 
-      {!isError && !isLoading && data && (
+      {!isError && !isLoading && stats && (
         <>
           <div className="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <StatCard label="Total Revenue" value={formatNaira(data.totalRevenue)} changePct={data.revenueChangePct} icon={DollarSign} />
-            <StatCard label="Total Orders" value={data.totalOrders ?? 0} changePct={data.ordersChangePct} icon={ShoppingBag} />
-            <StatCard label="Total Products" value={data.totalProducts ?? 0} icon={Package} />
-            <StatCard label="Total Customers" value={data.totalCustomers ?? 0} icon={Users} />
+            <StatCard label="Total Revenue" value={formatNaira(stats.totalRevenue)} changePct={stats.revenueChangePct} icon={DollarSign} />
+            <StatCard label="Total Orders" value={stats.totalOrders ?? 0} changePct={stats.ordersChangePct} icon={ShoppingBag} />
+            <StatCard label="Total Products" value={productData?.total ?? stats.totalProducts ?? 0} icon={Package} />
+            <StatCard label="Total Customers" value={stats.totalCustomers ?? 0} icon={Users} />
           </div>
 
-          <RecentOrdersList orders={data.recentOrders} />
         </>
       )}
+
+      <div className="mt-8">
+        {ordersLoading && <div className="rounded-2xl border border-[#E5E7EB] bg-white px-6 py-10 text-center text-sm text-[#6B7280]">Loading recent orders…</div>}
+        {ordersError && (
+          <div className="rounded-2xl border border-red-100 bg-red-50/50 px-6 py-10 text-center">
+            <p className="mb-2 text-sm text-[#111827]">Couldn&apos;t load recent orders.</p>
+            <button type="button" onClick={refetchOrders} className="text-sm font-semibold text-[#E67E22] underline">Try Again</button>
+          </div>
+        )}
+        {!ordersLoading && !ordersError && <RecentOrdersList orders={(recentOrdersData?.items ?? []).slice(0, 5)} />}
+      </div>
     </div>
   )
 }

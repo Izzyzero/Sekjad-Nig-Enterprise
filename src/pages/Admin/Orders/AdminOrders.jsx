@@ -4,9 +4,9 @@ import { useAdminOrders } from '../../../hooks/useOrders'
 import { useDebounce } from '../../../hooks/useDebounce'
 import { AdminOrderTable } from './AdminOrderTable'
 import { ProductPagination } from '../../../components/products/ProductPagination'
-import { ORDER_STATUSES } from '../../../components/admin/OrdersStatusBadge'
+import { ORDER_STATUSES } from '../../../utils/orderStatus'
 
-const PAGE_SIZE = 12
+const PAGE_SIZE = 10
 
 export function AdminOrdersPage() {
   const [search, setSearch] = useState('')
@@ -18,13 +18,19 @@ export function AdminOrdersPage() {
   const { data, isLoading, isError, refetch } = useAdminOrders({
     page,
     limit: PAGE_SIZE,
-    search: debouncedSearch,
     status,
   })
 
-  const orders = data?.items ?? []
+  const orders = (data?.items ?? []).filter((order) => {
+    const query = debouncedSearch.trim().toLowerCase()
+    if (!query) return true
+    const customer = order.user
+    return [order.orderNumber, order.reference, order.id, order._id, customer?.firstName, customer?.lastName, customer?.email]
+      .some((value) => String(value ?? '').toLowerCase().includes(query))
+  })
   const total = data?.total ?? 0
-  const totalPages = Math.max(1, data?.totalPages ?? Math.ceil(total / PAGE_SIZE))
+  const currentPage = data?.page ?? page
+  const totalPages = Math.max(1, data?.pages ?? Math.ceil(total / (data?.limit ?? PAGE_SIZE)))
 
   return (
     <div>
@@ -40,7 +46,7 @@ export function AdminOrdersPage() {
             type="text"
             value={search}
             onChange={(e) => { setSearch(e.target.value); setPage(1) }}
-            placeholder="Search by order number or customer..."
+            placeholder="Search this page by order or customer..."
             className="focus:border-[#E67E22]/60 w-full rounded-full border border-[#E5E7EB] bg-white py-2.5 pl-10 pr-4 text-sm text-[#111827] outline-none"
           />
         </div>
@@ -51,7 +57,7 @@ export function AdminOrdersPage() {
           className="focus:border-[#E67E22]/60 rounded-full border border-[#E5E7EB] bg-white px-4 py-2.5 text-sm text-[#111827] outline-none"
         >
           <option value="all">All Statuses</option>
-          {ORDER_STATUSES.map((s) => (
+          {ORDER_STATUSES.filter((s) => ['successful', 'pending', 'cancelled'].includes(s)).map((s) => (
             <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>
           ))}
         </select>
@@ -79,11 +85,9 @@ export function AdminOrdersPage() {
         </div>
       )}
 
-      {!isError && !isLoading && orders.length > 0 && (
-        <>
-          <AdminOrderTable orders={orders} />
-          <ProductPagination currentPage={page} totalPages={totalPages} onPageChange={setPage} />
-        </>
+      {!isError && !isLoading && orders.length > 0 && <AdminOrderTable orders={orders} />}
+      {!isError && !isLoading && totalPages > 1 && (
+        <ProductPagination currentPage={currentPage} totalPages={totalPages} onPageChange={setPage} />
       )}
     </div>
   )

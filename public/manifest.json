@@ -1,9 +1,9 @@
 {
-  "name": "SEKJAD NIG ENTERPRISES",
-  "short_name": "SEKJAD",
+  "name": "Sekjad Enterprise",
+  "short_name": "Sekjad",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#f4f7f5",
-  "theme_color": "#0b5d3b",
+  "theme_color": "#0d0d1a",
   "icons": []
 }

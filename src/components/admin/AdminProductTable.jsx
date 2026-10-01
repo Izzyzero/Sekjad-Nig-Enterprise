@@ -11,7 +11,7 @@ export function AdminProductTable({ products, onDelete }) {
   const categoryNames = new Map(categories.map((category) => [category.id, category.label]))
 
   return (
-    <div className="overflow-x-auto rounded-2xl border border-[#E5E7EB] bg-white">
+    <div className="w-full max-w-full overflow-x-auto rounded-2xl border border-[#E5E7EB] bg-white">
       <table className="w-full min-w-[720px] text-left text-sm">
         <thead>
           <tr className="border-b border-[#E5E7EB] text-[#6B7280]">

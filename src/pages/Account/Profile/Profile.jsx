@@ -1,11 +1,14 @@
-import { useState, useRef } from 'react'
-import { Link } from 'react-router-dom'
+import { authService } from '../../../services/auth.service'
+import { getApiError, getRateLimitSeconds } from '../../../services/api'
+import { useRateLimit } from '../../../hooks/useRateLimit'
+import { useEffect, useState } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
 import { Navbar } from '../../../components/layout/Navbar/Navbar'
 import { Footer } from '../../../components/layout/Footer/Footer'
 import { useAuth } from '../../../hooks/useAuth'
 import {
-  Camera, Save, Eye, EyeOff, MapPin, Plus, Trash2,
-  ChevronRight, User, Package, Heart, ArrowLeft
+  Save, Eye, EyeOff,
+  User, Package, Heart, ArrowLeft
 } from 'lucide-react'
 
 // ── Shared account sidebar nav used on all three pages ──────────────────────
@@ -62,284 +65,197 @@ function MobileAccountTabs({ active }) {
   )
 }
 
+const infoOf = (user) => ({ firstName: user?.firstName ?? '', lastName: user?.lastName ?? '', email: user?.email ?? '', phone: user?.phoneNumber ?? '' })
+const inputClass = 'w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm text-charcoal outline-none focus:border-orange/60'
+const buttonClass = 'inline-flex items-center gap-2 rounded-full bg-orange px-6 py-2.5 text-sm font-semibold text-white hover:bg-[#d4711f] disabled:opacity-60 disabled:cursor-not-allowed'
+function ErrorMessage({ children }) { return children ? <p role="alert" className="text-sm text-red-600">{children}</p> : null }
+
 export function Profile() {
-  const { user,isAuthenticated } = useAuth()
+  const { user, isAuthenticated, updateUser, clearSession } = useAuth()
+  const navigate = useNavigate()
   const [menuOpen, setMenuOpen] = useState(false)
-  const fileInputRef = useRef(null)
+  const [info, setInfo] = useState(() => infoOf(user))
+  const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState('')
+  const [loadAttempt, setLoadAttempt] = useState(0)
+  const [busy, setBusy] = useState('')
+  const [message, setMessage] = useState('')
+  const [errors, setErrors] = useState({})
+  const [emailPassword, setEmailPassword] = useState('')
+  const [pendingEmail, setPendingEmail] = useState('')
+  const [code, setCode] = useState('')
+  const [pwd, setPwd] = useState({ currentPassword: '', newPassword: '', confirmPassword: '' })
+  const [showPwd, setShowPwd] = useState({})
+  const profileLimit = useRateLimit()
+  const passwordLimit = useRateLimit()
+  const verificationLimit = useRateLimit()
+  const emailChanged = info.email.trim().toLowerCase() !== (user?.email ?? '').trim().toLowerCase()
 
-  // ── Personal info ────────────────────────────────────────────────────────
-  const [info, setInfo] = useState({
-    firstName: user?.firstName ?? '',
-    lastName:  user?.lastName  ?? '',
-    email:     user?.email     ?? '',
-    phone:     user?.phone     ?? '',
-  })
-  const [infoSaved, setInfoSaved] = useState(false)
-  const [avatarSrc, setAvatarSrc] = useState(user?.avatar ?? null)
+  useEffect(() => {
+    let active = true
+    authService.me().then((response) => {
+      if (!active) return
+      updateUser(response.data.user)
+      setInfo(infoOf(response.data.user))
+      setLoadError('')
+    }).catch((error) => {
+      if (!active) return
+      if (error.response?.status === 401) {
+        clearSession()
+        navigate('/login', { replace: true })
+      } else setLoadError(getApiError(error))
+    }).finally(() => { if (active) setLoading(false) })
+    return () => { active = false }
+  }, [updateUser, clearSession, navigate, loadAttempt])
 
-  const handleInfoChange = (e) => {
-    setInfo((p) => ({ ...p, [e.target.name]: e.target.value }))
-    setInfoSaved(false)
+  const fail = (error, section, limit) => {
+    if (error.response?.status === 401) {
+      clearSession()
+      navigate('/login', { replace: true, state: { message: 'Please sign in again to continue.' } })
+      return
+    }
+    const fields = { general: getApiError(error) }
+    for (const item of error.response?.data?.errors ?? []) fields[item.field === 'phoneNumber' ? 'phone' : item.field] = item.message
+    setErrors((previous) => ({ ...previous, [section]: fields }))
+    limit.startRateLimit(getRateLimitSeconds(error))
   }
-  const saveInfo = (e) => {
+  const saveInfo = async (e) => {
     e.preventDefault()
-    // TODO: call PATCH /api/auth/me
-    console.log('Save info:', info)
-    setInfoSaved(true)
+    if (busy || profileLimit.rateLimitSeconds) return
+    setBusy('info'); setMessage(''); setErrors({})
+    try {
+      const details = Object.fromEntries(Object.entries(info).map(([key, value]) => [key, value.trim()]))
+      if (emailChanged) details.currentPassword = emailPassword
+      const response = await authService.updateProfile(details)
+      updateUser(response.data.user)
+      setInfo(infoOf(response.data.user))
+      setEmailPassword('')
+      setMessage(response.message)
+      if (response.data.emailVerificationRequired) {
+        setPendingEmail(response.data.pendingEmail)
+        setCode('')
+      }
+    } catch (error) { fail(error, 'info', profileLimit) }
+    finally { setBusy('') }
   }
-
-  const handleAvatarChange = (e) => {
-    const file = e.target.files?.[0]
-    if (!file) return
-    const reader = new FileReader()
-    reader.onload = (ev) => setAvatarSrc(ev.target.result)
-    reader.readAsDataURL(file)
-    // TODO: upload file to backend
-  }
-
-  // ── Change password ──────────────────────────────────────────────────────
-  const [pwd, setPwd] = useState({ current: '', next: '', confirm: '' })
-  const [showPwd, setShowPwd] = useState({ current: false, next: false, confirm: false })
-  const [pwdError, setPwdError] = useState('')
-  const [pwdSaved, setPwdSaved] = useState(false)
-
-  const handlePwdChange = (e) => {
-    setPwd((p) => ({ ...p, [e.target.name]: e.target.value }))
-    setPwdError('')
-    setPwdSaved(false)
-  }
-  const savePwd = (e) => {
+  const verifyEmail = async (e) => {
     e.preventDefault()
-    if (pwd.next !== pwd.confirm) { setPwdError('New passwords do not match.'); return }
-    if (pwd.next.length < 8)      { setPwdError('Password must be at least 8 characters.'); return }
-    // TODO: call POST /api/auth/change-password
-    console.log('Change password')
-    setPwdSaved(true)
-    setPwd({ current: '', next: '', confirm: '' })
+    if (busy || verificationLimit.rateLimitSeconds) return
+    setBusy('verify'); setErrors({}); setMessage('')
+    try {
+      const response = await authService.verifyProfileEmail({ email: pendingEmail, code })
+      updateUser(response.data.user)
+      setInfo(infoOf(response.data.user))
+      setPendingEmail(''); setCode(''); setEmailPassword('')
+      setMessage(response.message)
+    } catch (error) { fail(error, 'verify', verificationLimit) }
+    finally { setBusy('') }
   }
-
-  // ── Saved addresses ──────────────────────────────────────────────────────
-  const [addresses, setAddresses] = useState(user?.addresses ?? [])
-  const [addingAddr, setAddingAddr] = useState(false)
-  const [newAddr, setNewAddr] = useState({ label: '', street: '', city: '', state: '' })
-
-  const saveAddress = (e) => {
+  const resendEmail = async () => {
+    if (busy || profileLimit.rateLimitSeconds || !emailPassword) return
+    setBusy('resend'); setErrors({}); setMessage('')
+    try {
+      const response = await authService.updateProfile({ email: pendingEmail, currentPassword: emailPassword })
+      updateUser(response.data.user)
+      setPendingEmail(response.data.emailVerificationRequired ? response.data.pendingEmail : '')
+      setCode(''); setEmailPassword('')
+      setMessage(response.message)
+    } catch (error) { fail(error, 'verify', profileLimit) }
+    finally { setBusy('') }
+  }
+  const savePwd = async (e) => {
     e.preventDefault()
-    if (!newAddr.street || !newAddr.city || !newAddr.state) return
-    setAddresses((p) => [...p, { ...newAddr, id: Date.now() }])
-    setNewAddr({ label: '', street: '', city: '', state: '' })
-    setAddingAddr(false)
-    // TODO: call POST /api/addresses
+    if (busy || passwordLimit.rateLimitSeconds) return
+    if (pwd.newPassword !== pwd.confirmPassword) { setErrors({ password: { confirmPassword: 'New passwords do not match.' } }); return }
+    if (pwd.newPassword.length < 8) { setErrors({ password: { newPassword: 'Password must be at least 8 characters.' } }); return }
+    setBusy('password'); setErrors({}); setMessage('')
+    try {
+      await authService.changePassword(pwd)
+      setPwd({ currentPassword: '', newPassword: '', confirmPassword: '' })
+      setEmailPassword('')
+      clearSession()
+      navigate('/login', { replace: true, state: { message: 'Password changed successfully. Please sign in again.' } })
+    } catch (error) { fail(error, 'password', passwordLimit) }
+    finally { setBusy('') }
   }
-  const deleteAddress = (id) => {
-    setAddresses((p) => p.filter((a) => a.id !== id))
-    // TODO: call DELETE /api/addresses/:id
-  }
-
-  // ── Initials avatar fallback ─────────────────────────────────────────────
-  const initials = [info.firstName[0], info.lastName[0]].filter(Boolean).join('').toUpperCase() || 'U'
-
+  const disabled = loading || Boolean(loadError) || Boolean(busy)
+  const initials = [user?.firstName?.[0], user?.lastName?.[0]].filter(Boolean).join('').toUpperCase() || 'U'
   return (
     <div className="min-h-screen bg-slate-50">
-      {/* Announcement bar placeholder height */}
       <div className="bg-charcoal h-9" />
-      <Navbar open={menuOpen} setOpen={setMenuOpen} isAuthenticated={isAuthenticated} navBackground="bg-white shadow-sm"  forceScrolledStyle={true} />
-
+      <Navbar open={menuOpen} setOpen={setMenuOpen} isAuthenticated={isAuthenticated} navBackground="bg-white shadow-sm" forceScrolledStyle={true} />
       <MobileAccountTabs active="My Profile" />
-
       <main className="mx-auto max-w-5xl px-5 py-10 sm:px-8 lg:py-14">
-        {/* Back link — mobile */}
-        <Link to="/" className="lg:hidden inline-flex items-center gap-1.5 text-sm text-charcoal/50 hover:text-charcoal mb-6 transition-colors">
-          <ArrowLeft size={15} /> Back to store
-        </Link>
-
+        <Link to="/" className="lg:hidden inline-flex items-center gap-1.5 text-sm text-charcoal/50 hover:text-charcoal mb-6"><ArrowLeft size={15} /> Back to store</Link>
         <div className="flex gap-10">
           <AccountNav active="My Profile" />
-
           <div className="flex-1 min-w-0 space-y-6">
-
-            {/* ── Avatar + name header ── */}
             <div className="bg-white rounded-2xl border border-slate-200 p-6 flex items-center gap-5">
-              <div className="relative shrink-0">
-                <div className="w-20 h-20 rounded-full overflow-hidden bg-orange/10 flex items-center justify-center ring-2 ring-orange/20">
-                  {avatarSrc
-                    ? <img src={avatarSrc} alt="Avatar" className="w-full h-full object-cover" />
-                    : <span className="text-orange text-2xl font-bold font-display">{initials}</span>}
-                </div>
-                <button
-                  type="button"
-                  onClick={() => fileInputRef.current?.click()}
-                  className="absolute -bottom-1 -right-1 w-7 h-7 bg-orange rounded-full flex items-center justify-center shadow text-white hover:bg-[#d4711f] transition-colors"
-                  aria-label="Change photo"
-                >
-                  <Camera size={13} strokeWidth={2} />
-                </button>
-                <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleAvatarChange} />
-              </div>
-              <div>
-                <p className="text-charcoal font-display text-lg font-semibold">
-                  {info.firstName || info.lastName ? `${info.firstName} ${info.lastName}`.trim() : 'Your Name'}
-                </p>
-                <p className="text-charcoal/45 text-sm mt-0.5">{info.email || 'your@email.com'}</p>
-              </div>
+              <div className="shrink-0 w-20 h-20 rounded-full bg-orange/10 flex items-center justify-center ring-2 ring-orange/20"><span className="text-orange text-2xl font-bold font-display">{initials}</span></div>
+              <div><p className="text-charcoal font-display text-lg font-semibold">{[user?.firstName, user?.lastName].filter(Boolean).join(' ') || 'Your Name'}</p><p className="text-charcoal/45 text-sm mt-0.5">{user?.email}</p></div>
             </div>
-
-            {/* ── Personal info ── */}
+            {loading && <p role="status">Loading your profile...</p>}
+            {loadError && <div><ErrorMessage>{loadError}</ErrorMessage><button type="button" className="text-orange" onClick={() => { setLoading(true); setLoadAttempt((n) => n + 1) }}>Retry loading profile</button></div>}
+            {message && <p role="status" className="text-sm text-green-700">{message}</p>}
             <section className="bg-white rounded-2xl border border-slate-200 p-6">
               <h2 className="text-charcoal font-display text-base font-semibold mb-5">Personal Information</h2>
-              <form onSubmit={saveInfo} className="space-y-4">
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                  {[
-                    { name: 'firstName', label: 'First Name',    type: 'text',  placeholder: 'Israel'       },
-                    { name: 'lastName',  label: 'Last Name',     type: 'text',  placeholder: 'Doe'          },
-                    { name: 'email',     label: 'Email Address', type: 'email', placeholder: 'you@email.com' },
-                    { name: 'phone',     label: 'Phone Number',  type: 'tel',   placeholder: '080X XXX XXXX' },
-                  ].map(({ name, label, type, placeholder }) => (
-                    <div key={name}>
-                      <label className="block text-xs font-semibold uppercase tracking-wide text-charcoal/40 mb-1.5">{label}</label>
-                      <input
-                        type={type}
-                        name={name}
-                        value={info[name]}
-                        onChange={handleInfoChange}
-                        placeholder={placeholder}
-                        className="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm text-charcoal outline-none focus:border-orange/60 transition-colors placeholder:text-charcoal/25"
-                      />
-                    </div>
-                  ))}
-                </div>
-                <div className="flex items-center gap-3 pt-1">
-                  <button type="submit" className="bg-orange inline-flex items-center gap-2 rounded-full px-6 py-2.5 text-sm font-semibold text-white transition hover:bg-[#d4711f]">
-                    <Save size={14} strokeWidth={2} /> Save changes
-                  </button>
-                  {infoSaved && <span className="text-sm text-green-600 font-medium">Saved ✓</span>}
-                </div>
+              <form onSubmit={saveInfo}>
+                <fieldset disabled={disabled} className="space-y-4">
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    {[
+                      { name: 'firstName', label: 'First Name', type: 'text', autoComplete: 'given-name' },
+                      { name: 'lastName', label: 'Last Name', type: 'text', autoComplete: 'family-name' },
+                      { name: 'email', label: 'Email Address', type: 'email', autoComplete: 'email' },
+                      { name: 'phone', label: 'Phone Number', type: 'tel', autoComplete: 'tel' },
+                    ].map(({ name, label, type, autoComplete }) => <div key={name}>
+                      <label htmlFor={name} className="block text-xs font-semibold uppercase tracking-wide text-charcoal/40 mb-1.5">{label}</label>
+                      <input id={name} name={name} type={type} autoComplete={autoComplete} required maxLength={name.endsWith('Name') ? 50 : undefined} pattern={name === 'phone' ? '[+]?[1-9][0-9]{7,14}' : undefined} title={name === 'phone' ? 'Enter 8–15 digits, starting with 1–9, with an optional + prefix.' : undefined} value={info[name]} onChange={(e) => { setInfo((previous) => ({ ...previous, [name]: e.target.value })); setMessage(''); setErrors({}) }} className={inputClass} />
+                      <ErrorMessage>{errors.info?.[name]}</ErrorMessage>
+                    </div>)}
+                  </div>
+                  {emailChanged && <div>
+                    <label htmlFor="email-password" className="block text-sm mb-2">Current password to change your email</label>
+                    <input id="email-password" type="password" autoComplete="current-password" required value={emailPassword} onChange={(e) => setEmailPassword(e.target.value)} className={inputClass} />
+                    <ErrorMessage>{errors.info?.currentPassword}</ErrorMessage>
+                  </div>}
+                  <ErrorMessage>{errors.info?.general}</ErrorMessage>
+                  <button disabled={profileLimit.rateLimitSeconds > 0} className={buttonClass}><Save size={14} />{busy === 'info' ? 'Saving...' : profileLimit.rateLimitSeconds ? `Try again in ${profileLimit.rateLimitSeconds}s` : 'Save changes'}</button>
+                </fieldset>
               </form>
+              {pendingEmail && <form onSubmit={verifyEmail} className="mt-6 border-t border-slate-200 pt-5 space-y-3">
+                <h3 className="font-semibold">Verify your new email</h3>
+                <p className="text-sm">Enter the code sent to {pendingEmail}. Your active email is still {user?.email}.</p>
+                <fieldset disabled={disabled} className="space-y-3">
+                  <label htmlFor="email-code" className="block text-sm">Verification code</label>
+                  <input id="email-code" inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]{6}" maxLength={6} required value={code} onChange={(e) => setCode(e.target.value)} className={inputClass} />
+                  <ErrorMessage>{errors.verify?.code || errors.verify?.email}</ErrorMessage>
+                  <ErrorMessage>{errors.verify?.general}</ErrorMessage>
+                  <button disabled={verificationLimit.rateLimitSeconds > 0} className={buttonClass}>{busy === 'verify' ? 'Verifying...' : verificationLimit.rateLimitSeconds ? `Try again in ${verificationLimit.rateLimitSeconds}s` : 'Verify email'}</button>
+                  <label htmlFor="resend-password" className="block text-sm">Current password to request a new code</label>
+                  <input id="resend-password" type="password" autoComplete="current-password" value={emailPassword} onChange={(e) => setEmailPassword(e.target.value)} className={inputClass} />
+                  <ErrorMessage>{errors.verify?.currentPassword}</ErrorMessage>
+                  <button type="button" disabled={!emailPassword || profileLimit.rateLimitSeconds > 0} onClick={resendEmail} className="text-orange font-semibold disabled:opacity-60">{busy === 'resend' ? 'Sending...' : profileLimit.rateLimitSeconds ? `Try again in ${profileLimit.rateLimitSeconds}s` : 'Resend code'}</button>
+                </fieldset>
+              </form>}
             </section>
-
-            {/* ── Change password ── */}
             <section className="bg-white rounded-2xl border border-slate-200 p-6">
-              <h2 className="text-charcoal font-display text-base font-semibold mb-5">Change Password</h2>
-              <form onSubmit={savePwd} className="space-y-4">
-                {[
-                  { name: 'current', label: 'Current Password',  placeholder: '••••••••' },
-                  { name: 'next',    label: 'New Password',       placeholder: 'Min. 8 characters' },
-                  { name: 'confirm', label: 'Confirm New Password', placeholder: '••••••••' },
-                ].map(({ name, label, placeholder }) => (
-                  <div key={name}>
-                    <label className="block text-xs font-semibold uppercase tracking-wide text-charcoal/40 mb-1.5">{label}</label>
+              <h2 className="text-charcoal font-display text-base font-semibold mb-2">Change Password</h2>
+              <p className="text-sm text-charcoal/60 mb-5">After changing your password, you will need to sign in again.</p>
+              <form onSubmit={savePwd}>
+                <fieldset disabled={disabled} className="space-y-4">
+                  {[{ name: 'currentPassword', label: 'Current Password' }, { name: 'newPassword', label: 'New Password' }, { name: 'confirmPassword', label: 'Confirm New Password' }].map(({ name, label }) => <div key={name}>
+                    <label htmlFor={name} className="block text-xs font-semibold uppercase tracking-wide text-charcoal/40 mb-1.5">{label}</label>
                     <div className="relative">
-                      <input
-                        type={showPwd[name] ? 'text' : 'password'}
-                        name={name}
-                        value={pwd[name]}
-                        onChange={handlePwdChange}
-                        placeholder={placeholder}
-                        required
-                        className="w-full rounded-xl border border-slate-200 px-4 py-2.5 pr-11 text-sm text-charcoal outline-none focus:border-orange/60 transition-colors placeholder:text-charcoal/25"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowPwd((p) => ({ ...p, [name]: !p[name] }))}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-charcoal/35 hover:text-charcoal transition-colors"
-                        aria-label={showPwd[name] ? 'Hide' : 'Show'}
-                      >
-                        {showPwd[name] ? <EyeOff size={16} /> : <Eye size={16} />}
-                      </button>
+                      <input id={name} name={name} type={showPwd[name] ? 'text' : 'password'} autoComplete={name === 'currentPassword' ? 'current-password' : 'new-password'} required minLength={name === 'currentPassword' ? undefined : 8} value={pwd[name]} onChange={(e) => { setPwd((previous) => ({ ...previous, [name]: e.target.value })); setErrors({}) }} className={`${inputClass} pr-11`} />
+                      <button type="button" onClick={() => setShowPwd((previous) => ({ ...previous, [name]: !previous[name] }))} className="absolute right-3 top-1/2 -translate-y-1/2 text-charcoal/40" aria-label={`${showPwd[name] ? 'Hide' : 'Show'} ${label.toLowerCase()}`}>{showPwd[name] ? <EyeOff size={16} /> : <Eye size={16} />}</button>
                     </div>
-                  </div>
-                ))}
-                {pwdError && <p className="text-sm text-red-500">{pwdError}</p>}
-                <div className="flex items-center gap-3 pt-1">
-                  <button type="submit" className="bg-charcoal inline-flex items-center gap-2 rounded-full px-6 py-2.5 text-sm font-semibold text-white transition hover:bg-orange">
-                    <Save size={14} strokeWidth={2} /> Update password
-                  </button>
-                  {pwdSaved && <span className="text-sm text-green-600 font-medium">Password updated ✓</span>}
-                </div>
+                    <ErrorMessage>{errors.password?.[name]}</ErrorMessage>
+                  </div>)}
+                  <ErrorMessage>{errors.password?.general}</ErrorMessage>
+                  <button disabled={passwordLimit.rateLimitSeconds > 0} className={`${buttonClass} bg-charcoal`}><Save size={14} />{busy === 'password' ? 'Updating...' : passwordLimit.rateLimitSeconds ? `Try again in ${passwordLimit.rateLimitSeconds}s` : 'Update password'}</button>
+                </fieldset>
               </form>
             </section>
-
-            {/* ── Saved addresses ── */}
-            <section className="bg-white rounded-2xl border border-slate-200 p-6">
-              <div className="flex items-center justify-between mb-5">
-                <h2 className="text-charcoal font-display text-base font-semibold">Saved Addresses</h2>
-                {!addingAddr && (
-                  <button
-                    type="button"
-                    onClick={() => setAddingAddr(true)}
-                    className="inline-flex items-center gap-1.5 text-sm font-semibold text-orange hover:text-[#d4711f] transition-colors"
-                  >
-                    <Plus size={15} strokeWidth={2.2} /> Add address
-                  </button>
-                )}
-              </div>
-
-              {/* Address list */}
-              <div className="space-y-3">
-                {addresses.length === 0 && !addingAddr && (
-                  <div className="rounded-xl border border-dashed border-slate-200 py-8 text-center">
-                    <MapPin size={22} className="mx-auto mb-2 text-charcoal/25" strokeWidth={1.5} />
-                    <p className="text-sm text-charcoal/40">No saved addresses yet.</p>
-                  </div>
-                )}
-                {addresses.map((addr) => (
-                  <div key={addr.id} className="flex items-start justify-between rounded-xl border border-slate-200 px-4 py-3">
-                    <div className="flex gap-3">
-                      <MapPin size={16} className="text-orange mt-0.5 shrink-0" strokeWidth={1.8} />
-                      <div>
-                        {addr.label && <p className="text-xs font-semibold uppercase tracking-wide text-charcoal/40 mb-0.5">{addr.label}</p>}
-                        <p className="text-sm text-charcoal">{addr.street}, {addr.city}, {addr.state}</p>
-                      </div>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => deleteAddress(addr.id)}
-                      className="text-charcoal/30 hover:text-red-400 transition-colors ml-4 shrink-0"
-                      aria-label="Remove address"
-                    >
-                      <Trash2 size={15} strokeWidth={1.8} />
-                    </button>
-                  </div>
-                ))}
-              </div>
-
-              {/* Add address form */}
-              {addingAddr && (
-                <form onSubmit={saveAddress} className="mt-4 rounded-xl border border-orange/30 bg-orange/[0.03] p-4 space-y-3">
-                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                    <div>
-                      <label className="block text-xs font-semibold uppercase tracking-wide text-charcoal/40 mb-1.5">Label (optional)</label>
-                      <input type="text" value={newAddr.label} onChange={(e) => setNewAddr((p) => ({ ...p, label: e.target.value }))}
-                        placeholder="Home, Office…"
-                        className="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm text-charcoal outline-none focus:border-orange/60 placeholder:text-charcoal/25" />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-semibold uppercase tracking-wide text-charcoal/40 mb-1.5">Street</label>
-                      <input type="text" required value={newAddr.street} onChange={(e) => setNewAddr((p) => ({ ...p, street: e.target.value }))}
-                        placeholder="14 Balogun Street"
-                        className="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm text-charcoal outline-none focus:border-orange/60 placeholder:text-charcoal/25" />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-semibold uppercase tracking-wide text-charcoal/40 mb-1.5">City</label>
-                      <input type="text" required value={newAddr.city} onChange={(e) => setNewAddr((p) => ({ ...p, city: e.target.value }))}
-                        placeholder="Lagos"
-                        className="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm text-charcoal outline-none focus:border-orange/60 placeholder:text-charcoal/25" />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-semibold uppercase tracking-wide text-charcoal/40 mb-1.5">State</label>
-                      <input type="text" required value={newAddr.state} onChange={(e) => setNewAddr((p) => ({ ...p, state: e.target.value }))}
-                        placeholder="Lagos State"
-                        className="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm text-charcoal outline-none focus:border-orange/60 placeholder:text-charcoal/25" />
-                    </div>
-                  </div>
-                  <div className="flex gap-2 pt-1">
-                    <button type="submit" className="bg-orange rounded-full px-5 py-2 text-sm font-semibold text-white transition hover:bg-[#d4711f]">Save address</button>
-                    <button type="button" onClick={() => setAddingAddr(false)} className="rounded-full px-5 py-2 text-sm font-medium text-charcoal/60 hover:text-charcoal transition-colors">Cancel</button>
-                  </div>
-                </form>
-              )}
-            </section>
-
           </div>
         </div>
       </main>
@@ -347,5 +263,4 @@ export function Profile() {
     </div>
   )
 }
-
 export default Profile

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -6,15 +6,16 @@ import { useNavigate, useParams, Link } from 'react-router-dom'
 import { ArrowLeft } from 'lucide-react'
 import { useAdminProduct, useCreateProduct, useUpdateProduct } from '../../../hooks/useProducts'
 import { AdminProductFormFields } from '../../../components/admin/AdminProductFormFields'
+import { applyApiFieldErrors, getApiError } from '../../../services/api'
 
 const productSchema = z
   .object({
     title: z.string().trim().min(2, 'Enter a product title').max(150),
     category: z.string().min(1, 'Select a category'),
-    price: z.coerce.number().nonnegative('Price cannot be negative'),
+    price: z.coerce.number().nonnegative('Price cannot be negative').max(99999999.99, 'Price must be between 0 and 99999999.99'),
     compareAtPrice: z.preprocess(
       (value) => value === '' || value === null ? undefined : value,
-      z.coerce.number().nonnegative().optional(),
+      z.coerce.number().nonnegative().max(99999999.99, 'Compare-at price must be between 0 and 99999999.99').optional(),
     ),
     description: z.string().trim().min(1, 'Enter a description').max(5000),
     brand: z.string().trim().max(100).optional(),
@@ -31,60 +32,46 @@ const productSchema = z
 
 export function AdminProductFormPage() {
   const { id } = useParams()
+  const { data: existingProduct, isLoading, isError, refetch } = useAdminProduct(id)
+  if (id && isLoading) return <p role="status">Loading product...</p>
+  if (id && (isError || !existingProduct)) return <div role="alert">Could not load this product. <button type="button" onClick={() => refetch()}>Try again</button></div>
+  return <AdminProductForm key={id ?? 'new'} id={id} existingProduct={existingProduct} />
+}
+
+function AdminProductForm({ id, existingProduct }) {
   const isEditMode = !!id
   const navigate = useNavigate()
-
-  const { data: existingProduct, isLoading: isLoadingProduct } = useAdminProduct(id)
   const createMutation = useCreateProduct()
   const updateMutation = useUpdateProduct()
 
   const [imageFile, setImageFile] = useState(null)
-  const [imagePreview, setImagePreview] = useState(null)
+  const [imagePreview, setImagePreview] = useState(existingProduct?.image ?? null)
   const [galleryFiles, setGalleryFiles] = useState([])
-  const [galleryPreviews, setGalleryPreviews] = useState([])
+  const [galleryPreviews, setGalleryPreviews] = useState(existingProduct?.gallery ?? [])
   const [submitError, setSubmitError] = useState('')
 
   const {
     register,
     handleSubmit,
-    reset,
+    setError,
+    clearErrors,
     formState: { errors, isSubmitting },
   } = useForm({
     resolver: zodResolver(productSchema),
     defaultValues: {
-      title: '',
-      category: '',
-      price: '',
-      compareAtPrice: '',
-      description: '',
-      brand: '',
-      sku: '',
-      tags: '',
-      status: 'active',
-      isFeatured: false,
-      imageAltText: '',
+      title: existingProduct?.name ?? '',
+      category: existingProduct?.category ?? '',
+      price: existingProduct?.price ?? '',
+      compareAtPrice: existingProduct?.compareAtPrice ?? '',
+      description: existingProduct?.description ?? '',
+      brand: existingProduct?.brand ?? '',
+      sku: existingProduct?.sku ?? '',
+      tags: (existingProduct?.tags ?? []).join(', '),
+      status: existingProduct?.status ?? 'active',
+      isFeatured: existingProduct?.isFeatured ?? false,
+      imageAltText: existingProduct?.imageAlt ?? '',
     },
   })
-
-  useEffect(() => {
-    if (existingProduct) {
-      reset({
-        title: existingProduct.name,
-        category: existingProduct.category,
-        price: existingProduct.price,
-        compareAtPrice: existingProduct.compareAtPrice ?? '',
-        description: existingProduct.description ?? '',
-        brand: existingProduct.brand ?? '',
-        sku: existingProduct.sku ?? '',
-        tags: (existingProduct.tags ?? []).join(', '),
-        status: existingProduct.status ?? 'active',
-        isFeatured: existingProduct.isFeatured ?? false,
-        imageAltText: existingProduct.imageAlt ?? '',
-      })
-      setImagePreview(existingProduct.image ?? null)
-      setGalleryPreviews(existingProduct.gallery ?? [])
-    }
-  }, [existingProduct, reset])
 
   const handleImageChange = (event) => {
     const file = event.target.files?.[0]
@@ -111,6 +98,7 @@ export function AdminProductFormPage() {
 
   const onSubmit = async (formValues) => {
     setSubmitError('')
+    clearErrors()
     try {
       if (!isEditMode && !imageFile) {
         setSubmitError('Select a product image.')
@@ -125,12 +113,13 @@ export function AdminProductFormPage() {
       }
       navigate('/admin/products')
     } catch (error) {
-      setSubmitError('Something went wrong saving this product. Please try again.')
+      const backendErrors = error.response?.data?.errors
+      if (Array.isArray(backendErrors) && backendErrors.length > 0) {
+        applyApiFieldErrors(error, setError)
+      } else {
+        setSubmitError(getApiError(error, 'Something went wrong saving this product. Please try again.'))
+      }
     }
-  }
-
-  if (isEditMode && isLoadingProduct) {
-    return <p className="text-[#6B7280] text-sm">Loading product…</p>
   }
 
   return (

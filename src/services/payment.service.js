@@ -1,2 +1,8 @@
-import { api } from './api'
-export const paymentService = { initialize: (details) => api('/payments', { method: 'POST', body: JSON.stringify(details) }) }
+import { api } from './api.js'
+
+const dataOf = (response) => response.data?.data ?? response.data
+
+export const paymentService = {
+  initialize: () => api.post('/payments/initialize').then(dataOf),
+  verify: (reference) => api.get(`/payments/verify/${encodeURIComponent(reference)}`).then(dataOf),
+}

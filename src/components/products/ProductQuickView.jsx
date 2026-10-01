@@ -67,9 +67,6 @@ export function ProductQuickView({ product, onClose }) {
             )}
           </div>
 
-          {product.availabilityText && (
-            <p className="text-[#22C55E] mb-4 text-sm font-medium">{product.availabilityText}</p>
-          )}
 
           {product.description && (
             <p className="text-[#6B7280] mb-5 text-sm leading-relaxed">{product.description}</p>

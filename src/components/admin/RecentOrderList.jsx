@@ -19,7 +19,7 @@ export function RecentOrdersList({ orders }) {
   }
 
   return (
-    <div className="rounded-2xl border border-[#E5E7EB] bg-white">
+    <div className="min-w-0 rounded-2xl border border-[#E5E7EB] bg-white">
       <div className="flex items-center justify-between border-b border-[#E5E7EB] px-5 py-4">
         <h3 className="text-[#111827] font-semibold">Recent Orders</h3>
         <Link to="/admin/orders" className="text-[#E67E22] text-sm font-medium hover:underline">
@@ -28,14 +28,14 @@ export function RecentOrdersList({ orders }) {
       </div>
       <ul>
         {orders.map((order) => (
-          <li key={order.id} className="border-b border-[#E5E7EB] px-5 py-3.5 last:border-none">
-            <Link to={`/admin/orders/${order.id}`} className="flex items-center justify-between gap-3">
+          <li key={order.id ?? order._id} className="border-b border-[#E5E7EB] px-5 py-3.5 last:border-none">
+            <Link to={`/admin/orders/${order.id ?? order._id}`} className="flex min-w-0 flex-wrap items-center justify-between gap-3">
               <div className="min-w-0">
-                <p className="text-[#111827] truncate text-sm font-medium">{order.customerName}</p>
-                <p className="text-[#6B7280] text-xs">#{order.orderNumber ?? order.id} · {formatDate(order.createdAt)}</p>
+                <p className="text-[#111827] truncate text-sm font-medium">{[order.user?.firstName, order.user?.lastName].filter(Boolean).join(' ') || order.customerName || '—'}</p>
+                <p className="text-[#6B7280] text-xs">#{order.orderNumber ?? order.reference ?? order.id ?? order._id} · {formatDate(order.createdAt)}</p>
               </div>
-              <div className="flex shrink-0 items-center gap-3">
-                <span className="text-[#111827] text-sm font-semibold">{formatNaira(order.total)}</span>
+              <div className="flex flex-wrap items-center gap-3">
+                <span className="text-[#111827] text-sm font-semibold">{formatNaira(order.total ?? Number(order.amount ?? 0) / 100)}</span>
                 <OrderStatusBadge status={order.status} />
               </div>
             </Link>

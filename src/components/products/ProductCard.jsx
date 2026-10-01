@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom'
 import { Heart } from 'lucide-react'
 import { useWishlist } from '../../hooks/useWishlist'
 import { useCart } from '../../hooks/useCart'
+import { ProductTags } from './ProductTags'
 
 function formatNaira(value) {
   return `₦${Number(value).toLocaleString('en-NG')}`
@@ -29,6 +30,8 @@ export function ProductCard({ product }) {
             className="h-full w-full object-cover transition duration-700 group-hover:scale-105"
           />
         </Link>
+
+        <ProductTags tags={product.tags} className="absolute left-3 right-14 top-3" />
 
         <button
           type="button"

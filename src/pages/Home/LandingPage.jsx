@@ -1,3 +1,4 @@
+import { useContactForm } from '../../hooks/useContactForm'
 import { useEffect, useRef, useState } from 'react'
 import { MapPin, Phone, Mail, Clock } from 'lucide-react'
 import { FaFacebookF, FaInstagram, FaTiktok, FaWhatsapp } from 'react-icons/fa'
@@ -19,11 +20,15 @@ import {
 } from 'lucide-react'
 import { Navbar } from '../../components/layout/Navbar/Navbar'
 import { Footer } from '../../components/layout/Footer/Footer'
+import { ProductTags } from '../../components/products/ProductTags'
 import heroImg from '../../assets/images/heroImg.jpg'
 import AsoOke from '../../assets/images/AsoOke.jpg'
 import Brocade from '../../assets/images/Brocade.jpg'
 import sego from '../../assets/images/sego.jpg'
 import lace from '../../assets/images/lace.jpg'
+import africanWoman from '../../assets/images/africanWoman.avif'
+
+
 
 const COLLECTION_ROUTES = {
   'Lace Fabrics':      '/shop?category=lace',
@@ -34,29 +39,18 @@ const COLLECTION_ROUTES = {
   'Bridal Wears':      '/shop?category=bridal',
 }
 
-const GUEST_PRODUCTS = [
-  { id: 'guest-royal-blue-brocade', name: 'Royal Blue Brocade', price: 30000, compareAtPrice: 35000, image: 'https://i.pinimg.com/1200x/e1/f0/e9/e1f0e962fce266ae8745f73c5c0284e3.jpg' },
-  { id: 'guest-gold-beaded-lace', name: 'Gold Beaded Lace', price: 50000, compareAtPrice: null, image: 'https://i.pinimg.com/1200x/b9/4e/54/b94e54ecf54f780dffd36325ef247542.jpg' },
-  { id: 'guest-3d-sego', name: '3D Sego', price: 40000, compareAtPrice: null, image: 'https://i.pinimg.com/1200x/dd/c6/0d/ddc60d6a5d42c1424291bc13d5a6cd65.jpg' },
-  { id: 'guest-swiss-lace-set', name: 'Swiss Lace Set', price: 65000, compareAtPrice: null, image: 'https://i.pinimg.com/1200x/3b/8c/1c/3b8c1c7103ce2f9e3da28ca26ddb5145.jpg' },
-  { id: 'guest-deep-navy-senator', name: 'Deep Navy Senator', price: 18500, compareAtPrice: null, image: 'https://i.pinimg.com/1200x/89/57/3d/89573de8bb6ce6ce53190277715c56ca.jpg' },
-  { id: 'guest-vintage-aso-oke', name: 'Vintage Aso Oke', price: 35000, compareAtPrice: 95000, image: 'https://i.pinimg.com/736x/e1/f2/e8/e1f2e8d9246bff8d9a245399a08e8ffe.jpg' },
-]
-
 export function LandingPage() {
   const { isAuthenticated, user } = useAuth()
   const { data: featuredData, isLoading: featuredLoading, isError: featuredError } = useProducts(
     { isFeatured: true, limit: 6, sort: '-createdAt' },
-    { enabled: isAuthenticated },
   )
-  const { data: latestData } = useProducts(
+  const { data: latestData, isLoading: latestLoading, isError: latestError } = useProducts(
     { limit: 5, sort: '-createdAt' },
-    { enabled: isAuthenticated },
   )
   const { addToCart } = useCart()
   const { isWishlisted, toggle: toggleWishlist } = useWishlist()
-  const featuredProducts = isAuthenticated ? (featuredData?.items ?? []) : GUEST_PRODUCTS
-  const latestProducts = isAuthenticated ? (latestData?.items ?? []) : GUEST_PRODUCTS.slice(0, 5)
+  const featuredProducts = featuredData?.items ?? []
+  const latestProducts = latestData?.items ?? []
 
   const collections = [
     { name: 'Lace Fabrics',      tagline: 'French & Swiss elegance',      img: lace    },
@@ -64,7 +58,7 @@ export function LandingPage() {
     { name: 'Brocade Materials', tagline: 'Delta & Igbo tradition',        img: Brocade },
     { name: 'Damask&Sego',       tagline: 'Bold African excellence',       img: sego    },
     { name: 'Senator Material',  tagline: 'Premium menswear distinction',  img: 'https://i.pinimg.com/1200x/9e/78/3d/9e783deae2a8315cef285ce0e7eb6a76.jpg' },
-    { name: 'Bridal Wears',      tagline: 'Your perfect wedding vision',   img: 'https://i.pinimg.com/1200x/fa/bb/21/fabb21f89c9c1298e47ae5f7b4eba717.jpg'  },
+    // { name: 'Bridal Wears',      tagline: 'Your perfect wedding vision',   img: 'https://i.pinimg.com/1200x/fa/bb/21/fabb21f89c9c1298e47ae5f7b4eba717.jpg'  },
   ]
 
   const promises = [
@@ -82,9 +76,9 @@ export function LandingPage() {
 
   const SOCIAL_LINKS = [
     { Icon: FaInstagram, title: 'Instagram', href: 'https://instagram.com/your_username' },
-    { Icon: FaFacebookF, title: 'Facebook',  href: 'https://facebook.com/your_page'     },
-    { Icon: FaTiktok,    title: 'TikTok',    href: 'https://tiktok.com/@your_username'  },
-    { Icon: FaWhatsapp,  title: 'WhatsApp',  href: 'https://wa.me/234XXXXXXXXXX'        },
+    { Icon: FaFacebookF, title: 'Facebook', href: 'https://facebook.com/your_page' },
+    { Icon: FaTiktok, title: 'TikTok', href: 'https://tiktok.com/@your_username' },
+    { Icon: FaWhatsapp, title: 'WhatsApp', href: 'https://wa.me/2348107965151' },
   ]
 
   const [menuOpen, setMenuOpen] = useState(false)
@@ -93,7 +87,7 @@ export function LandingPage() {
   const [testimonialChanging, setTestimonialChanging] = useState(false)
   const [whatsAppVisible, setWhatsAppVisible] = useState(false)
   const [contactForm, setContactForm] = useState({ name: '', email: '', phone: '', message: '' })
-  const [contactSubmitted, setContactSubmitted] = useState(false)
+  const { send: sendContact, sending: contactSending, sent: contactSubmitted, error: contactError } = useContactForm()
   const productScroller = useRef(null)
 
   const scrollProducts = (direction) => productScroller.current?.scrollBy({ left: direction * 330, behavior: 'smooth' })
@@ -106,8 +100,7 @@ export function LandingPage() {
   const submitContactForm = (event) => {
     event.preventDefault()
     if (!contactForm.name.trim() || !contactForm.email.trim() || !contactForm.message.trim()) return
-    console.log('Contact form payload:', contactForm)
-    setContactSubmitted(true)
+    sendContact(contactForm)
   }
 
   const setupTestimonialTimer = () =>
@@ -255,13 +248,13 @@ export function LandingPage() {
               </div>
             </div>
             <div ref={productScroller} className="flex snap-x gap-5 overflow-x-auto pb-4 [scrollbar-width:none]">
-              {isAuthenticated && featuredLoading && (
+              {featuredLoading && (
                 <p className="py-16 text-sm text-charcoal/50">Loading featured products…</p>
               )}
-              {isAuthenticated && featuredError && (
+              {featuredError && (
                 <p className="py-16 text-sm text-red-600">Could not load featured products.</p>
               )}
-              {isAuthenticated && !featuredLoading && !featuredError && featuredProducts.length === 0 && (
+              {!featuredLoading && !featuredError && featuredProducts.length === 0 && (
                 <p className="py-16 text-sm text-charcoal/50">No featured products yet.</p>
               )}
               {featuredProducts.map((product) => {
@@ -270,6 +263,7 @@ export function LandingPage() {
                 <article key={product.id} className="w-[230px] shrink-0 snap-start sm:w-[260px] lg:w-[290px]">
                   <Link to={productRoute(product.id)} className="group relative block h-[300px] overflow-hidden rounded-xl bg-stone-200 sm:h-[350px]">
                     <img className="h-full w-full object-cover transition duration-700 group-hover:scale-105" src={product.image} alt={product.name} />
+                    <ProductTags tags={product.tags} className="absolute left-3 right-14 top-3" />
                     <button
                       className="absolute right-3 top-3 grid size-9 place-items-center rounded-full bg-white shadow-sm"
                       onClick={(event) => { event.preventDefault(); toggleWishlist(product) }}
@@ -328,10 +322,20 @@ export function LandingPage() {
             <h2 className="font-display text-ink text-3xl font-normal sm:text-4xl lg:text-5xl">Latest Arrivals</h2>
           </div>
           <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-5 lg:gap-5">
+            {latestLoading && (
+              <p className="col-span-full py-16 text-sm text-charcoal/50">Loading latest arrivals...</p>
+            )}
+            {latestError && (
+              <p className="col-span-full py-16 text-sm text-red-600">Could not load latest arrivals.</p>
+            )}
+            {!latestLoading && !latestError && latestProducts.length === 0 && (
+              <p className="col-span-full py-16 text-sm text-charcoal/50">No latest arrivals yet.</p>
+            )}
             {latestProducts.map((product, index) => (
               <article key={product.id} className="group">
                 <div className={`relative mb-3 overflow-hidden rounded-xl bg-stone-200 sm:mb-4 ${index % 2 === 0 ? 'h-[220px] sm:h-[300px]' : 'h-[190px] sm:h-[260px]'}`}>
                   <img src={product.image} alt={product.name} className="h-full w-full object-cover transition duration-700 group-hover:scale-105" />
+                  <ProductTags tags={product.tags} className="absolute left-3 right-3 top-3" />
                   <Link
                     to={productRoute(product.id)}
                     className="text-charcoal hover:bg-orange absolute inset-x-3 bottom-3 rounded-full bg-white py-2.5 text-center text-xs font-semibold opacity-0 shadow-sm transition group-hover:opacity-100 hover:text-white"
@@ -357,7 +361,7 @@ export function LandingPage() {
         <section id="about-us" className="bg-cream relative scroll-mt-24 overflow-hidden lg:h-[480px] lg:scroll-mt-28">
           <div className="flex h-full flex-col lg:flex-row">
             <div className="h-56 overflow-hidden bg-stone-200 sm:h-72 lg:h-full lg:w-1/2">
-              <img className="h-full w-full object-cover" src="https://images.unsplash.com/photo-1687052034884-391a9e5ea8dd?w=800&h=600&fit=crop&auto=format&q=80" alt="Traditional Nigerian fabric artisan" />
+              <img className="h-full w-full object-cover" src={africanWoman} alt="Traditional Nigerian fabric artisan" />
             </div>
             <div className="flex items-center px-6 py-10 sm:px-8 sm:py-14 lg:w-1/2 lg:px-16">
               <div className="max-w-md">
@@ -421,7 +425,7 @@ export function LandingPage() {
                     <span className="border-orange/25 bg-orange/10 text-orange flex size-11 shrink-0 items-center justify-center rounded-xl border"><MapPin size={18} strokeWidth={1.75} /></span>
                     <div>
                       <h3 className="mb-1 text-sm font-semibold text-white">Showroom Address</h3>
-                      <p className="text-sm leading-relaxed text-white/45">14 Balogun Street, Idumota Market<br />Lagos Island, Lagos, Nigeria</p>
+                      <p className="text-sm leading-relaxed text-white/45">Shop P12 Red block, Gbagi Market<br />Ibadan, Oyo, Nigeria</p>
                     </div>
                   </div>
                   <div className="flex gap-4">
@@ -429,7 +433,7 @@ export function LandingPage() {
                     <div>
                       <h3 className="mb-1 text-sm font-semibold text-white">Phone</h3>
                       <a href="tel:+2348001234523" className="block text-sm text-white/45 transition hover:text-orange">+234 800 SEKJAD</a>
-                      <a href="tel:+2349165151867" className="block text-sm text-white/45 transition hover:text-orange">+234 916 515 1867</a>
+                      <a href="tel:+2349165151867" className="block text-sm text-white/45 transition hover:text-orange">+234 810 796 5151</a>
                     </div>
                   </div>
                   <div className="flex gap-4">
@@ -489,8 +493,9 @@ export function LandingPage() {
                       <textarea required rows={4} value={contactForm.message} onChange={(e) => setContactForm((p) => ({ ...p, message: e.target.value }))} placeholder="Tell us what you're looking for..."
                         className="focus:border-orange/60 w-full resize-none rounded-lg border border-white/15 bg-white/5 px-4 py-3 text-sm text-white outline-none placeholder:text-white/25" />
                     </div>
-                    <button type="submit" className="bg-orange w-full rounded-full py-3.5 text-sm font-semibold text-white transition hover:bg-[#d4711f] sm:w-auto sm:px-10">
-                      Send Message
+                    <p role="alert" className="mb-4 text-sm text-red-300">{contactError}</p>
+                    <button type="submit" disabled={contactSending} className="disabled:opacity-50 bg-orange w-full rounded-full py-3.5 text-sm font-semibold text-white transition hover:bg-[#d4711f] sm:w-auto sm:px-10">
+                      {contactSending ? 'Sending...' : 'Send Message'}
                     </button>
                   </form>
                 )}
@@ -502,7 +507,7 @@ export function LandingPage() {
 
       <Footer />
 
-      <a href="https://wa.me/2349165151867" target="_blank" rel="noopener noreferrer" aria-label="Chat with us on WhatsApp"
+      <a href="https://wa.me/2348107965151" target="_blank" rel="noopener noreferrer" aria-label="Chat with us on WhatsApp"
         className={`fixed bottom-5 right-5 sm:bottom-6 sm:right-6 flex h-12 w-12 items-center justify-center sm:h-14 sm:w-14 rounded-full bg-green-500 text-white shadow-lg transition-all duration-300 ease-out hover:bg-green-600 ${
           whatsAppVisible ? 'opacity-100 scale-100 translate-y-0 pointer-events-auto' : 'opacity-0 scale-[0.8] translate-y-5 pointer-events-none'
         }`}

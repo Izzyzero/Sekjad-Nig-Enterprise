@@ -3,9 +3,12 @@ import { Link } from 'react-router-dom'
 import { Navbar } from '../../../components/layout/Navbar/Navbar'
 import { Footer } from '../../../components/layout/Footer/Footer'
 import { useAuth } from '../../../hooks/useAuth'
+import { useCustomerOrders } from '../../../hooks/useCustomerOrders'
+import { getApiError } from '../../../services/api'
+import { formatCurrency } from '../../../utils/formatCurrency'
 import {
   Package, User, Heart, ArrowLeft, ChevronRight,
-  X, MapPin, Clock, CheckCircle, Truck, XCircle, RefreshCw
+  X, Clock, CheckCircle, XCircle
 } from 'lucide-react'
 
 // ── Shared account sidebar ───────────────────────────────────────────────────
@@ -56,62 +59,16 @@ function MobileAccountTabs({ active }) {
 // ── Status config ────────────────────────────────────────────────────────────
 const STATUS = {
   pending:   { label: 'Pending',    color: 'bg-amber-50 text-amber-600 border-amber-200',    icon: Clock       },
-  confirmed: { label: 'Confirmed',  color: 'bg-blue-50 text-blue-600 border-blue-200',       icon: RefreshCw   },
-  shipped:   { label: 'Shipped',    color: 'bg-purple-50 text-purple-600 border-purple-200', icon: Truck       },
-  delivered: { label: 'Delivered',  color: 'bg-green-50 text-green-600 border-green-200',    icon: CheckCircle },
+  successful: { label: 'Successful', color: 'bg-green-50 text-green-600 border-green-200', icon: CheckCircle },
   cancelled: { label: 'Cancelled',  color: 'bg-red-50 text-red-500 border-red-200',          icon: XCircle     },
 }
 
-const FILTERS = ['All', 'Pending', 'Confirmed', 'Shipped', 'Delivered', 'Cancelled']
+const FILTERS = ['All', 'Successful', 'Pending', 'Cancelled']
 
-// ── Mock orders (replace with API data when backend is ready) ────────────────
-const MOCK_ORDERS = [
-  {
-    id: 'SKJ-2024-001',
-    date: '12 Jul 2025',
-    status: 'delivered',
-    total: '₦80,000',
-    address: '14 Balogun Street, Lagos Island',
-    items: [
-      { name: 'Royal Blue Brocade', qty: 2, price: '₦30,000', img: 'https://i.pinimg.com/1200x/e1/f0/e9/e1f0e962fce266ae8745f73c5c0284e3.jpg' },
-      { name: 'Gold Beaded Lace',   qty: 1, price: '₦50,000', img: 'https://i.pinimg.com/1200x/b9/4e/54/b94e54ecf54f780dffd36325ef247542.jpg' },
-    ],
-  },
-  {
-    id: 'SKJ-2024-002',
-    date: '28 Jul 2025',
-    status: 'shipped',
-    total: '₦40,000',
-    address: '7 Akin Adesola Street, Victoria Island',
-    items: [
-      { name: '3D Sego', qty: 1, price: '₦40,000', img: 'https://i.pinimg.com/1200x/dd/c6/0d/ddc60d6a5d42c1424291bc13d5a6cd65.jpg' },
-    ],
-  },
-  {
-    id: 'SKJ-2024-003',
-    date: '3 Aug 2025',
-    status: 'pending',
-    total: '₦65,000',
-    address: '22 Admiralty Way, Lekki Phase 1',
-    items: [
-      { name: 'Swiss Lace Set', qty: 1, price: '₦65,000', img: 'https://i.pinimg.com/1200x/3b/8c/1c/3b8c1c7103ce2f9e3da28ca26ddb5145.jpg' },
-    ],
-  },
-  {
-    id: 'SKJ-2024-004',
-    date: '5 Aug 2025',
-    status: 'cancelled',
-    total: '₦18,500',
-    address: '3 Herbert Macaulay Way, Yaba',
-    items: [
-      { name: 'Deep Navy Senator', qty: 1, price: '₦18,500', img: 'https://i.pinimg.com/1200x/89/57/3d/89573de8bb6ce6ce53190277715c56ca.jpg' },
-    ],
-  },
-]
 
 // ── Order detail modal ───────────────────────────────────────────────────────
 function OrderModal({ order, onClose }) {
-  const { label, color, icon: StatusIcon } = STATUS[order.status]
+  const { label, color, icon: StatusIcon } = STATUS[order.status] ?? STATUS.pending
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
       {/* backdrop */}
@@ -121,7 +78,7 @@ function OrderModal({ order, onClose }) {
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
           <div>
             <p className="text-xs font-semibold uppercase tracking-widest text-charcoal/40 mb-0.5">Order</p>
-            <p className="text-charcoal font-display font-semibold">{order.id}</p>
+            <p className="text-charcoal font-display font-semibold">{order.number}</p>
           </div>
           <button type="button" onClick={onClose} aria-label="Close"
             className="text-charcoal/40 hover:text-charcoal transition-colors rounded-full p-1.5">
@@ -137,19 +94,19 @@ function OrderModal({ order, onClose }) {
               <StatusIcon size={12} strokeWidth={2} />
               {label}
             </span>
-            <span className="text-xs text-charcoal/40">{order.date}</span>
+            <span className="text-xs text-charcoal/40">{order.date ? new Date(order.date).toLocaleDateString('en-NG') : ''}</span>
           </div>
 
           {/* items */}
           <div className="space-y-3">
             {order.items.map((item) => (
-              <div key={item.name} className="flex items-center gap-4">
-                <img src={item.img} alt={item.name} className="w-16 h-16 rounded-xl object-cover bg-stone-100 shrink-0" />
+              <div key={item.id ?? item.name} className="flex items-center gap-4">
+                {item.image ? <img src={item.image} alt={item.name} className="w-16 h-16 rounded-xl object-cover bg-stone-100 shrink-0" /> : <div className="grid w-16 h-16 place-items-center rounded-xl bg-stone-100 text-stone-300"><Package size={20} /></div>}
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-semibold text-charcoal truncate">{item.name}</p>
-                  <p className="text-xs text-charcoal/45 mt-0.5">Qty: {item.qty}</p>
+                  <p className="text-xs text-charcoal/45 mt-0.5">Qty: {item.quantity}</p>
                 </div>
-                <p className="text-sm font-bold text-orange shrink-0">{item.price}</p>
+                <p className="text-sm font-bold text-orange shrink-0">{formatCurrency(item.price, order.currency)}</p>
               </div>
             ))}
           </div>
@@ -157,19 +114,12 @@ function OrderModal({ order, onClose }) {
           {/* divider */}
           <div className="border-t border-slate-100" />
 
-          {/* delivery address */}
-          <div className="flex gap-3">
-            <MapPin size={16} className="text-orange mt-0.5 shrink-0" strokeWidth={1.8} />
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-wide text-charcoal/40 mb-0.5">Delivery Address</p>
-              <p className="text-sm text-charcoal">{order.address}</p>
-            </div>
-          </div>
+          {order.paidAt && <p className="text-xs text-charcoal/50">Paid {new Date(order.paidAt).toLocaleDateString('en-NG')}</p>}
 
           {/* total */}
           <div className="flex items-center justify-between rounded-xl bg-slate-50 px-4 py-3">
             <p className="text-sm font-medium text-charcoal/60">Order Total</p>
-            <p className="text-base font-bold text-charcoal">{order.total}</p>
+            <p className="text-base font-bold text-charcoal">{formatCurrency(order.total, order.currency)}</p>
           </div>
         </div>
       </div>
@@ -182,9 +132,13 @@ export function Orders() {
   const [menuOpen, setMenuOpen] = useState(false)
   const [activeFilter, setActiveFilter] = useState('All')
   const [selectedOrder, setSelectedOrder] = useState(null)
+  const [page, setPage] = useState(1)
   const { isAuthenticated } = useAuth()
+  const { data, isPending, isError, error, refetch } = useCustomerOrders(page)
+  const orders = data?.orders ?? []
+  const pagination = data?.pagination
 
-  const filtered = MOCK_ORDERS.filter((o) =>
+  const filtered = orders.filter((o) =>
     activeFilter === 'All' || o.status === activeFilter.toLowerCase()
   )
 
@@ -208,7 +162,7 @@ export function Orders() {
             {/* Page header */}
             <div>
               <h1 className="font-display text-charcoal text-xl font-semibold">My Orders</h1>
-              <p className="text-sm text-charcoal/45 mt-0.5">{MOCK_ORDERS.length} orders placed</p>
+              <p className="text-sm text-charcoal/45 mt-0.5">{pagination?.total ?? 0} orders placed</p>
             </div>
 
             {/* Filter tabs */}
@@ -225,7 +179,9 @@ export function Orders() {
             </div>
 
             {/* Empty state */}
-            {filtered.length === 0 && (
+            {isPending && <div role="status" className="rounded-2xl border border-slate-200 bg-white p-8 text-sm text-charcoal/50">Loading your orders...</div>}
+            {isError && <div role="alert" className="rounded-2xl border border-red-200 bg-red-50 p-8 text-sm text-red-600">{getApiError(error, 'Could not load your orders.')} <button type="button" onClick={() => refetch()} className="ml-2 font-semibold underline">Try again</button></div>}
+            {!isPending && !isError && filtered.length === 0 && (
               <div className="bg-white rounded-2xl border border-slate-200 py-16 text-center">
                 <Package size={36} className="mx-auto mb-3 text-charcoal/20" strokeWidth={1.4} />
                 <p className="text-charcoal font-semibold mb-1">No {activeFilter !== 'All' ? activeFilter.toLowerCase() : ''} orders</p>
@@ -240,8 +196,8 @@ export function Orders() {
 
             {/* Order list */}
             <div className="space-y-3">
-              {filtered.map((order) => {
-                const { label, color, icon: StatusIcon } = STATUS[order.status]
+              {!isPending && !isError && filtered.map((order) => {
+                const { label, color, icon: StatusIcon } = STATUS[order.status] ?? STATUS.pending
                 return (
                   <button
                     key={order.id}
@@ -253,23 +209,22 @@ export function Orders() {
                       {/* item thumbnails */}
                       <div className="flex -space-x-2 shrink-0">
                         {order.items.slice(0, 3).map((item, i) => (
-                          <img key={i} src={item.img} alt={item.name}
-                            className="w-12 h-12 rounded-xl object-cover border-2 border-white bg-stone-100" />
+                          item.image ? <img key={item.id ?? i} src={item.image} alt={item.name} className="w-12 h-12 rounded-xl object-cover border-2 border-white bg-stone-100" /> : <div key={item.id ?? i} className="grid w-12 h-12 place-items-center rounded-xl border-2 border-white bg-stone-100 text-stone-300"><Package size={18} /></div>
                         ))}
                       </div>
 
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center justify-between gap-2 flex-wrap">
-                          <p className="text-sm font-semibold text-charcoal">{order.id}</p>
+                          <p className="text-sm font-semibold text-charcoal">{order.number}</p>
                           <span className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-[11px] font-semibold ${color}`}>
                             <StatusIcon size={11} strokeWidth={2} />
                             {label}
                           </span>
                         </div>
                         <p className="text-xs text-charcoal/40 mt-1">
-                          {order.items.length} item{order.items.length > 1 ? 's' : ''} · {order.date}
+                          {order.items.length} item{order.items.length > 1 ? 's' : ''} · {order.date ? new Date(order.date).toLocaleDateString('en-NG') : ''}
                         </p>
-                        <p className="text-sm font-bold text-charcoal mt-1">{order.total}</p>
+                        <p className="text-sm font-bold text-charcoal mt-1">{formatCurrency(order.total, order.currency)}</p>
                       </div>
 
                       <ChevronRight size={17} className="text-charcoal/25 group-hover:text-orange shrink-0 mt-1 transition-colors" strokeWidth={2} />
@@ -278,6 +233,14 @@ export function Orders() {
                 )
               })}
             </div>
+
+            {!isPending && !isError && pagination && pagination.pages > 1 && (
+              <nav aria-label="Order pages" className="flex items-center justify-between rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm">
+                <button type="button" onClick={() => setPage((current) => Math.max(1, current - 1))} disabled={page <= 1} className="font-medium text-orange disabled:text-charcoal/30">Previous</button>
+                <span className="text-charcoal/60">Page {pagination.page} of {pagination.pages}</span>
+                <button type="button" onClick={() => setPage((current) => Math.min(pagination.pages, current + 1))} disabled={page >= pagination.pages} className="font-medium text-orange disabled:text-charcoal/30">Next</button>
+              </nav>
+            )}
 
           </div>
         </div>
