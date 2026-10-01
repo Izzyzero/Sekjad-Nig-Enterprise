@@ -365,7 +365,7 @@ export function LandingPage() {
                 </h2>
                 <p className="text-ink/55 mb-5 text-sm leading-relaxed">Founded in Lagos in 2009, Sekjad Nig Enterprises was born from a belief that every Nigerian deserves access to the finest traditional fabrics.</p>
                 <p className="text-ink/55 mb-7 text-sm leading-relaxed">We partner directly with master weavers across Yorubaland, Igboland, and the Niger Delta.</p>
-                <Link to="/about-us" className="text-orange border-orange/30 hover:border-orange inline-flex items-center gap-2 rounded-full border px-6 py-3 text-sm font-semibold transition-colors">
+                <Link to="/login" state={{ from: location.state?.from }} className="text-orange border-orange/30 hover:border-orange inline-flex items-center gap-2 rounded-full border px-6 py-3 text-sm font-semibold transition-colors">
                   Read our full story <ArrowRight size={14} />
                 </Link>
               </div>
