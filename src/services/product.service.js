@@ -9,7 +9,7 @@
 //   baseURL: import.meta.env.VITE_API_BASE_URL || '/api',
 // })
 
-import { api } from './api'
+import { api } from './api.js'
 
 const getCategoryLabel = (categories) => {
   const category = categories?.[0]
@@ -18,7 +18,7 @@ const getCategoryLabel = (categories) => {
   return ''
 }
 
-const normalizeProduct = (product = {}) => ({
+export const normalizeProduct = (product = {}) => ({
   ...product,
   id: product.id ?? product._id,
   name: product.name ?? product.title ?? '',
@@ -28,8 +28,16 @@ const normalizeProduct = (product = {}) => ({
   category: product.category ?? product.categories?.[0]?._id ?? product.categories?.[0] ?? '',
   compareAtPrice: product.compareAtPrice ?? null,
   colors: product.colors ?? [],
+  variants: (product.variants ?? []).map((variant) => ({
+    ...variant,
+    image: typeof variant.image === 'string'
+      ? { url: variant.image, altText: variant.colorName ?? '' }
+      : { ...variant.image, url: variant.image?.url ?? '', altText: variant.image?.altText ?? variant.colorName ?? '' },
+  })),
   gallery: (product.gallery ?? []).map((image) => typeof image === 'string' ? image : image?.url).filter(Boolean),
 })
+
+export const isVariantAvailable = (variant) => variant?.isAvailable === true
 
 const normalizeProductList = (response = {}) => {
   const items = response.items ?? response.data ?? []
@@ -43,7 +51,7 @@ const normalizeProductList = (response = {}) => {
   }
 }
 
-const toProductFormData = (product = {}) => {
+export const toProductFormData = (product = {}) => {
   const formData = new FormData()
   const fields = {
     title: product.title,
@@ -65,6 +73,7 @@ const toProductFormData = (product = {}) => {
   categories.forEach((category) => formData.append('categories[]', category))
   const tags = String(product.tags ?? '').split(',').map((tag) => tag.trim()).filter(Boolean)
   tags.forEach((tag) => formData.append('tags[]', tag))
+  formData.append('variants', JSON.stringify(product.variants ?? []))
   if (product.image) formData.append('image', product.image)
   ;(product.gallery ?? []).forEach((image) => formData.append('gallery', image))
   return formData
@@ -128,12 +137,12 @@ export async function searchSuggestions(query) {
 // (e.g. /api/admin/products vs a role-gated /api/products).
 
 export async function createProduct(payload) {
-  const { data } = await api.post('/upload/product/', toProductFormData(payload))
+  const { data } = await api.post('/products', toProductFormData(payload))
   return data
 }
 
 export async function updateProduct(id, payload) {
-  const { data } = await api.patch(`/products/${id}`, toProductFormData(payload))
+  const { data } = await api.patch(`/products/${encodeURIComponent(id)}`, toProductFormData(payload))
   return data
 }
 

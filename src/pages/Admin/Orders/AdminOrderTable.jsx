@@ -27,7 +27,14 @@ export function AdminOrderTable({ orders }) {
         <tbody>
           {orders.map((order) => (
             <tr key={order.id ?? order._id} className="border-b border-[#E5E7EB] last:border-none">
-              <td className="text-[#111827] px-5 py-3.5 font-medium">#{order.orderNumber ?? order.reference ?? order.id ?? order._id}</td>
+              <td className="text-[#111827] px-5 py-3.5 font-medium">
+                <p>#{order.orderNumber ?? order.reference ?? order.id ?? order._id}</p>
+                {order.items?.length > 0 && (
+                  <p className="mt-1 max-w-xs text-xs font-normal text-[#6B7280]">
+                    {order.items.map((item) => `${item.title ?? item.name ?? 'Product'}${item.colorName ? ` · ${item.colorName}` : ''} × ${item.quantity ?? 1}`).join(', ')}
+                  </p>
+                )}
+              </td>
               <td className="px-5 py-3.5">
                 <p className="text-[#111827]">{[order.user?.firstName, order.user?.lastName].filter(Boolean).join(' ') || order.customerName || '—'}</p>
                 <p className="text-[#6B7280] text-xs">{order.user?.email ?? order.customerEmail}</p>

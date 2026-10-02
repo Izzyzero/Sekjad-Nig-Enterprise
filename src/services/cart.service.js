@@ -1,4 +1,4 @@
-import { api } from './api'
+import { api } from './api.js'
 
 const unwrapCart = (response) => {
   const body = response?.data ?? response ?? {}
@@ -11,21 +11,27 @@ export const normalizeCart = (response) => {
   const cart = unwrapCart(response)
   const items = Array.isArray(cart?.items)
     ? cart.items
-        .filter((item) => item?.product)
+        .filter(Boolean)
         .map((item) => {
-          const product = item.product
+          const product = item.product && typeof item.product === 'object' ? item.product : {}
+          const selectedImage = imageUrl(item.selectedImage)
           return {
             ...product,
-            id: product.id ?? product._id,
-            cartItemId: item.id ?? item._id,
-            name: product.name ?? product.title ?? '',
-            image: imageUrl(product.image),
+            id: item.productId ?? product.id ?? product._id,
+            productId: item.productId ?? product.id ?? product._id,
+            cartItemId: item.cartItemId,
+            variantId: item.variantId ?? null,
+            colorName: item.colorName ?? null,
+            selectedImage: selectedImage || null,
+            name: item.name ?? item.title ?? product.name ?? product.title ?? '',
+            image: selectedImage || imageUrl(product.image),
             categoryLabel:
               product.categoryLabel ??
               product.categories?.[0]?.label ??
               product.categories?.[0]?.name ??
               '',
             quantity: Number(item.quantity ?? 1),
+            price: Number(item.price ?? 0),
           }
         })
     : []
@@ -34,19 +40,22 @@ export const normalizeCart = (response) => {
     ...cart,
     items,
     itemCount: cart?.itemCount ?? items.reduce((total, item) => total + item.quantity, 0),
-    subtotal:
-      cart?.subtotal ??
-      items.reduce((total, item) => total + Number(item.price ?? 0) * item.quantity, 0),
+    subtotal: Number(cart?.subtotal ?? 0),
     currency: cart?.currency ?? items[0]?.currency ?? 'NGN',
   }
 }
 
 export const cartService = {
   get: () => api.get('/cart').then(normalizeCart),
-  addItem: (productId, quantity = 1) =>
-    api.post('/cart/items', { productId, quantity }).then(normalizeCart),
-  updateItemQuantity: (productId, quantity) =>
-    api.patch(`/cart/items/${productId}`, { quantity }).then(normalizeCart),
-  removeItem: (productId) => api.delete(`/cart/items/${productId}`).then(normalizeCart),
+  addItem: ({ productId, variantId, quantity = 1 }) =>
+    api.post('/cart/items', {
+      productId,
+      ...(variantId ? { variantId } : {}),
+      quantity,
+    }).then(normalizeCart),
+  updateItemQuantity: (cartItemId, quantity) =>
+    api.patch(`/cart/items/${encodeURIComponent(cartItemId)}`, { quantity }).then(normalizeCart),
+  removeItem: (cartItemId) =>
+    api.delete(`/cart/items/${encodeURIComponent(cartItemId)}`).then(normalizeCart),
   clear: () => api.delete('/cart').then(normalizeCart),
 }

@@ -16,7 +16,10 @@ test('loads customer orders through the authenticated API and normalizes the lis
     assert.equal(config.headers.Authorization, 'Bearer customer-token')
     return { config, status: 200, headers: {}, data: { data: [{
       _id: 'order-1', reference: 'SKJ-1', status: 'successful', amount: 4500000, currency: 'NGN',
-      createdAt: '2026-09-13T12:00:00Z', items: [{ title: 'Brocade', quantity: 2, unitAmount: 2250000, imageUrl: 'image.jpg' }],
+      createdAt: '2026-09-13T12:00:00Z', items: [{
+        title: 'Brocade', variantId: 'red-id', colorName: 'Red', quantity: 2,
+        unitAmount: 2250000, imageUrl: 'image.jpg', variantImageUrl: 'red.jpg',
+      }],
     }], pagination: { page: 2, limit: 10, total: 11, pages: 2 } } }
   }
   const result = await customerOrdersService.list(2)
@@ -25,6 +28,9 @@ test('loads customer orders through the authenticated API and normalizes the lis
   assert.equal(result.orders[0].number, 'SKJ-1')
   assert.equal(result.orders[0].status, 'successful')
   assert.equal(result.orders[0].total, 45000)
-  assert.deepEqual(result.orders[0].items[0], { id: 'order-1-0', name: 'Brocade', quantity: 2, price: 22500, image: 'image.jpg' })
+  assert.deepEqual(result.orders[0].items[0], {
+    id: 'order-1-0', name: 'Brocade', variantId: 'red-id', colorName: 'Red',
+    quantity: 2, price: 22500, image: 'red.jpg',
+  })
   setAccessToken(null)
 })

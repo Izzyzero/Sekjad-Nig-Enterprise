@@ -18,7 +18,10 @@ test('admin order detail uses the authenticated API and renders customer and pur
     return { config, status: 200, headers: {}, data: { data: {
       _id: 'order-1', reference: 'SKJ-1', status: 'successful', amount: 4500000,
       user: { firstName: 'Ada', lastName: 'Okafor', email: 'ada@example.com' },
-      items: [{ _id: 'item-1', title: 'Brocade', quantity: 2, unitAmount: 2250000, imageUrl: 'image.jpg' }],
+      items: [{
+        _id: 'item-1', title: 'Brocade', variantId: 'red-id', colorName: 'Red',
+        quantity: 2, unitAmount: 2250000, imageUrl: 'image.jpg', variantImageUrl: 'red.jpg',
+      }],
     } } }
   }
 
@@ -29,8 +32,9 @@ test('admin order detail uses the authenticated API and renders customer and pur
     assert.equal(order.customerEmail, 'ada@example.com')
     assert.equal(order.total, 45000)
     assert.deepEqual(order.items[0], {
-      _id: 'item-1', title: 'Brocade', quantity: 2, unitAmount: 2250000, imageUrl: 'image.jpg',
-      id: 'item-1', name: 'Brocade', price: 22500, image: 'image.jpg',
+      _id: 'item-1', title: 'Brocade', variantId: 'red-id', colorName: 'Red',
+      quantity: 2, unitAmount: 2250000, imageUrl: 'image.jpg', variantImageUrl: 'red.jpg',
+      id: 'item-1', name: 'Brocade', price: 22500, image: 'red.jpg',
     })
   } finally {
     setAccessToken(null)

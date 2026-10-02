@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useAuth } from './useAuth'
 import { useRequireAuth } from './useRequireAuth'
 import { cartService } from '../services/cart.service'
+import { isVariantAvailable } from '../services/product.service'
 
 export function useCart() {
   const queryClient = useQueryClient()
@@ -18,11 +19,11 @@ export function useCart() {
   const updateCachedCart = (cart) => queryClient.setQueryData(queryKey, cart)
 
   const addMutation = useMutation({
-    mutationFn: ({ productId, quantity }) => cartService.addItem(productId, quantity),
+    mutationFn: cartService.addItem,
     onSuccess: updateCachedCart,
   })
   const updateMutation = useMutation({
-    mutationFn: ({ productId, quantity }) => cartService.updateItemQuantity(productId, quantity),
+    mutationFn: ({ cartItemId, quantity }) => cartService.updateItemQuantity(cartItemId, quantity),
     onSuccess: updateCachedCart,
   })
   const removeMutation = useMutation({
@@ -34,21 +35,35 @@ export function useCart() {
     onSuccess: updateCachedCart,
   })
 
-  const addToCart = (product, quantity = 1) => {
+  const addVariables = (product, quantity, variantId) => {
     const productId = product?.id ?? product?._id
-    if (!requireAuth(`/shop/product/${encodeURIComponent(productId)}`)) return false
-    if (productId) addMutation.mutate({ productId, quantity })
+    if (!productId || !requireAuth(`/shop/product/${encodeURIComponent(productId)}`)) return null
+    if (product?.variants?.length && !isVariantAvailable(product.variants.find((variant) => variant.variantId === variantId))) return null
+    return { productId, variantId, quantity }
   }
 
-  const updateQuantity = (id, quantity) =>
-    requireAuth('/cart') && updateMutation.mutate({ productId: id, quantity })
-  const removeFromCart = (id) => requireAuth('/cart') && removeMutation.mutate(id)
+  const addToCart = (product, quantity = 1, variantId) => {
+    const variables = addVariables(product, quantity, variantId)
+    if (!variables) return false
+    addMutation.mutate(variables)
+    return true
+  }
+  const addToCartAsync = (product, quantity = 1, variantId) => {
+    const variables = addVariables(product, quantity, variantId)
+    if (!variables) return Promise.resolve(false)
+    return addMutation.mutateAsync(variables)
+  }
+
+  const updateQuantity = (cartItemId, quantity) =>
+    requireAuth('/cart') && updateMutation.mutate({ cartItemId, quantity })
+  const removeFromCart = (cartItemId) => requireAuth('/cart') && removeMutation.mutate(cartItemId)
   const clearCart = () => requireAuth('/cart') && clearMutation.mutate()
 
   return {
     cart: cartQuery.data,
     items: cartQuery.data?.items ?? [],
     addToCart,
+    addToCartAsync,
     updateQuantity,
     removeFromCart,
     clearCart,

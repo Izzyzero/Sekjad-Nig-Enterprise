@@ -103,6 +103,7 @@ export function AdminOrderDetailPage() {
                 </div>
                 <div className="min-w-0">
                   <p className="break-words text-[#111827] text-sm font-medium">{item.name}</p>
+                  {item.colorName && <p className="text-[#6B7280] text-xs">Color: {item.colorName}</p>}
                   <p className="text-[#6B7280] text-xs">Qty: {item.quantity}</p>
                 </div>
               </div>

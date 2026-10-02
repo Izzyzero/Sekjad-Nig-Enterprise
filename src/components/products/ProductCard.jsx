@@ -2,7 +2,6 @@ import { Link } from 'react-router-dom'
 import { Heart } from 'lucide-react'
 import { useWishlist } from '../../hooks/useWishlist'
 import { useCart } from '../../hooks/useCart'
-import { ProductTags } from './ProductTags'
 
 function formatNaira(value) {
   return `₦${Number(value).toLocaleString('en-NG')}`
@@ -31,8 +30,6 @@ export function ProductCard({ product }) {
           />
         </Link>
 
-        <ProductTags tags={product.tags} className="absolute left-3 right-14 top-3" />
-
         <button
           type="button"
           onClick={() => toggle(product)}
@@ -55,13 +52,22 @@ export function ProductCard({ product }) {
         )}
       </div>
 
-      <button
-        type="button"
-        onClick={() => addToCart(product)}
-        className="w-full rounded-full bg-[#1F2937] py-3 text-xs font-semibold tracking-wide text-white transition hover:bg-[#E67E22]"
-      >
-        Add to Cart
-      </button>
+      {product.variants?.length > 0 ? (
+        <Link
+          to={detailHref}
+          className="block w-full rounded-full bg-[#1F2937] py-3 text-center text-xs font-semibold tracking-wide text-white transition hover:bg-[#E67E22]"
+        >
+          Choose Color
+        </Link>
+      ) : (
+        <button
+          type="button"
+          onClick={() => addToCart(product)}
+          className="w-full rounded-full bg-[#1F2937] py-3 text-xs font-semibold tracking-wide text-white transition hover:bg-[#E67E22]"
+        >
+          Add to Cart
+        </button>
+      )}
     </article>
   )
 }

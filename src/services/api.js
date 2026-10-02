@@ -10,6 +10,7 @@ let authenticationFailureHandler = null
 
 const tokenFrom = (response) => response?.data?.data?.accessToken ?? response?.data?.accessToken ?? null
 const isAuthRequest = (url = '') => /(^|\/)auth\//.test(url)
+export const isSessionRejected = (error) => [401, 403].includes(error.response?.status)
 
 export const setAccessToken = (token) => {
   accessToken = token || null
@@ -33,8 +34,10 @@ export const refreshAccessToken = ({ notifyOnFailure = true } = {}) => {
         return response.data
       })
       .catch((error) => {
-        setAccessToken(null)
-        if (notifyOnFailure) authenticationFailureHandler?.()
+        if (isSessionRejected(error)) {
+          setAccessToken(null)
+          if (notifyOnFailure) authenticationFailureHandler?.()
+        }
         throw error
       })
       .finally(() => {

@@ -1,6 +1,6 @@
 import { createContext, useCallback, useEffect, useMemo, useState } from 'react'
 import { authService } from '../services/auth.service'
-import { setAccessToken, setAuthenticationFailureHandler } from '../services/api'
+import { isSessionRejected, setAccessToken, setAuthenticationFailureHandler } from '../services/api'
 import { hasSessionHint, setSessionHint } from '../utils/sessionHint'
 
 // Kept with the provider to preserve the project's existing context/hook pattern.
@@ -45,8 +45,9 @@ export function AuthProvider({ children }) {
         const me = await authService.me()
         if (active) setUser(userOf(me) ?? payloadOf(me))
       })
-      .catch(() => {
-        if (active) clearSession()
+      .catch((error) => {
+        // Keep the restoration hint during outages so the next visit can retry.
+        if (active && isSessionRejected(error)) clearSession()
       })
       .finally(() => {
         if (active) setIsAuthLoading(false)

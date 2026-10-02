@@ -60,12 +60,22 @@ export function Wishlist() {
   const [justAdded, setJustAdded] = useState(null)
   const { isAuthenticated } = useAuth()
   const { items, remove, clear, isLoading, isError, error, mutationError, isUpdating, refetch } = useWishlist()
-  const { addToCart: addProductToCart, isUpdating: isCartUpdating } = useCart()
+  const {
+    addToCartAsync: addProductToCart,
+    isUpdating: isCartUpdating,
+    mutationError: cartMutationError,
+  } = useCart()
 
-  const addToCart = (product) => {
-    addProductToCart(product)
-    setJustAdded(product.id)
-    window.setTimeout(() => setJustAdded(null), 1500)
+  const addToCart = async (product) => {
+    if (product.variants?.length) return
+    try {
+      const added = await addProductToCart(product)
+      if (added === false) return
+      setJustAdded(product.id)
+      window.setTimeout(() => setJustAdded(null), 1500)
+    } catch {
+      setJustAdded(null)
+    }
   }
 
   return (
@@ -101,6 +111,11 @@ export function Wishlist() {
             {mutationError && (
               <div className="rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-600">
                 {getApiError(mutationError, 'Could not update your wishlist.')}
+              </div>
+            )}
+            {cartMutationError && (
+              <div role="alert" className="rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-600">
+                {getApiError(cartMutationError, 'Could not add this product to your cart.')}
               </div>
             )}
 
@@ -152,18 +167,24 @@ export function Wishlist() {
                       <span className="text-orange text-sm font-bold">{formatCurrency(item.price)}</span>
                       {item.compareAtPrice && <span className="text-xs text-charcoal/30 line-through">{formatCurrency(item.compareAtPrice)}</span>}
                     </div>
-                    <button
-                      type="button"
-                      disabled={isCartUpdating}
-                      onClick={() => addToCart(item)}
-                      className={`w-full inline-flex items-center justify-center gap-1.5 rounded-full py-2 text-xs font-semibold transition-colors
-                        ${justAdded === item.id
-                          ? 'bg-green-500 text-white'
-                          : 'bg-charcoal text-white hover:bg-orange'}`}
-                    >
-                      <ShoppingCart size={13} strokeWidth={1.8} />
-                      {justAdded === item.id ? 'Added ✓' : 'Add to Cart'}
-                    </button>
+                    {item.variants?.length > 0 ? (
+                      <Link to={`/shop/product/${item.id}`} className="block w-full rounded-full bg-charcoal py-2 text-center text-xs font-semibold text-white transition-colors hover:bg-orange">
+                        Choose Color
+                      </Link>
+                    ) : (
+                      <button
+                        type="button"
+                        disabled={isCartUpdating}
+                        onClick={() => addToCart(item)}
+                        className={`w-full inline-flex items-center justify-center gap-1.5 rounded-full py-2 text-xs font-semibold transition-colors
+                          ${justAdded === item.id
+                            ? 'bg-green-500 text-white'
+                            : 'bg-charcoal text-white hover:bg-orange'}`}
+                      >
+                        <ShoppingCart size={13} strokeWidth={1.8} />
+                        {justAdded === item.id ? 'Added ✓' : 'Add to Cart'}
+                      </button>
+                    )}
                   </div>
                 </div>
               ))}

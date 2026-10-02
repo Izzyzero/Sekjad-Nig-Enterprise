@@ -45,6 +45,35 @@ test('expired authenticated sessions still notify the provider when refresh fail
   }
 })
 
+test('temporary refresh failures preserve the session and allow a later request to recover', async () => {
+  for (const status of [undefined, 429, 500]) {
+    setAccessToken('expired-token')
+    let failures = 0
+    let unavailable = true
+    const cleanup = setAuthenticationFailureHandler(() => { failures += 1 })
+    try {
+      api.defaults.adapter = async (config) => {
+        if (config.url === '/auth/refresh') {
+          if (unavailable) {
+            if (status === undefined) throw { config, message: 'Network unavailable' }
+            return rejection(config, status)
+          }
+          assert.equal(config.withCredentials, true)
+          return response(config, { data: { accessToken: 'restored-token' } })
+        }
+        if (config.headers.Authorization !== 'Bearer restored-token') return rejection(config, 401)
+        return response(config, { ok: true })
+      }
+      await assert.rejects(api.get('/orders'))
+      assert.equal(failures, 0)
+      unavailable = false
+      assert.equal((await api.get('/orders')).data.ok, true)
+    } finally {
+      cleanup()
+    }
+  }
+})
+
 test('registration posts its contract and navigates to email verification with the email', async () => {
   let request
   api.defaults.adapter = async (config) => {

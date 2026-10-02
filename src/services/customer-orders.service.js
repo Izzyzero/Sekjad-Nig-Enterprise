@@ -23,9 +23,11 @@ export const normalizeCustomerOrder = (order) => ({
   items: (order.items ?? []).map((item, index) => ({
     id: item._id ?? `${order._id}-${index}`,
     name: item.title ?? 'Product',
+    variantId: item.variantId ?? null,
+    colorName: item.colorName ?? null,
     quantity: Number(item.quantity ?? 1),
     price: Number(item.unitAmount ?? 0) / 100,
-    image: imageOf(item.imageUrl),
+    image: imageOf(item.variantImageUrl ?? item.imageUrl),
   })),
 })
 

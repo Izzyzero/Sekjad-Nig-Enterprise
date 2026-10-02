@@ -19,6 +19,7 @@ export function WhatsAppCheckout({ fingerprint, userId, disabled, onPreparing })
   const queryClient = useQueryClient()
   const { rateLimitSeconds, startRateLimit } = useRateLimit()
   const order = attempt.order
+  const paymentStatus = order?.paymentStatus ?? order?.status ?? 'pending'
 
   useEffect(() => {
     saveCheckoutAttempt(window.sessionStorage, storageKey, attempt)
@@ -65,7 +66,26 @@ export function WhatsAppCheckout({ fingerprint, userId, disabled, onPreparing })
     </button> : <>
       <p role="status" className="text-sm text-[#111827]">Send your order in WhatsApp to arrange payment.</p>
       <p className="min-w-0 [overflow-wrap:anywhere] text-sm">Reference: <strong>{order.reference}</strong></p>
-      <p className="text-sm">Items total: {formatCurrency(order.amount / 100, order.currency)} (excluding delivery). Payment pending.</p>
+      <p className="text-sm">Items total: {formatCurrency(order.amount / 100, order.currency)} (excluding delivery). Payment status: <strong>{String(paymentStatus).replaceAll('_', ' ')}</strong>.</p>
+      {order.items?.length > 0 && (
+        <ul className="space-y-2 rounded-xl border border-[#E9E4DF] p-3">
+          {order.items.map((item, index) => (
+            <li key={item.variantId ? `${item.id ?? item.productId ?? index}-${item.variantId}` : item.id ?? index} className="flex items-center gap-3 text-sm">
+              {(item.variantImageUrl || item.imageUrl) && <img src={item.variantImageUrl || item.imageUrl} alt="" className="size-12 shrink-0 rounded-lg object-cover" />}
+              <span className="min-w-0 flex-1">
+                <span className="block font-medium">{item.title ?? item.name ?? 'Product'}</span>
+                {item.colorName && <span className="block text-xs text-[#6B7280]">Color: {item.colorName}</span>}
+              </span>
+              <span className="shrink-0 text-right text-xs text-[#6B7280]">
+                <span className="block">Qty: {item.quantity}</span>
+                <span className="block font-medium text-[#111827]">
+                  {formatCurrency((Number(item.unitAmount ?? 0) / 100) * Number(item.quantity ?? 1), order.currency)}
+                </span>
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
       <a href={order.whatsappUrl} className="block rounded-full bg-[#E67E22] py-3 text-center text-sm font-semibold text-white">Open WhatsApp</a>
       <button type="button" onClick={copy} className="text-sm font-semibold text-[#E67E22]">Copy order</button>
       {copyStatus && <p role="status" className="text-sm">{copyStatus}</p>}

@@ -104,6 +104,7 @@ function OrderModal({ order, onClose }) {
                 {item.image ? <img src={item.image} alt={item.name} className="w-16 h-16 rounded-xl object-cover bg-stone-100 shrink-0" /> : <div className="grid w-16 h-16 place-items-center rounded-xl bg-stone-100 text-stone-300"><Package size={20} /></div>}
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-semibold text-charcoal truncate">{item.name}</p>
+                  {item.colorName && <p className="text-xs text-charcoal/55 mt-0.5">Color: {item.colorName}</p>}
                   <p className="text-xs text-charcoal/45 mt-0.5">Qty: {item.quantity}</p>
                 </div>
                 <p className="text-sm font-bold text-orange shrink-0">{formatCurrency(item.price, order.currency)}</p>
@@ -223,6 +224,9 @@ export function Orders() {
                         </div>
                         <p className="text-xs text-charcoal/40 mt-1">
                           {order.items.length} item{order.items.length > 1 ? 's' : ''} · {order.date ? new Date(order.date).toLocaleDateString('en-NG') : ''}
+                        </p>
+                        <p className="mt-1 line-clamp-2 text-xs text-charcoal/55">
+                          {order.items.map((item) => `${item.name}${item.colorName ? ` · ${item.colorName}` : ''} × ${item.quantity}`).join(', ')}
                         </p>
                         <p className="text-sm font-bold text-charcoal mt-1">{formatCurrency(order.total, order.currency)}</p>
                       </div>

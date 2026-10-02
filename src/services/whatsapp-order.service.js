@@ -1,6 +1,20 @@
 ﻿import { api } from './api.js'
 
-export const checkoutFingerprint = (items) => JSON.stringify(items.map(({ id, quantity, price }) => ({ id, quantity, price })).sort((a, b) => String(a.id).localeCompare(String(b.id))))
+export const checkoutFingerprint = (items) => JSON.stringify(
+  items
+    .map(({ id, productId, cartItemId, variantId, quantity, price }) => ({
+      productId: productId ?? id,
+      cartItemId,
+      variantId: variantId ?? null,
+      quantity,
+      price,
+    }))
+    .sort((a, b) =>
+      `${a.productId}:${a.variantId ?? ''}:${a.cartItemId ?? ''}`.localeCompare(
+        `${b.productId}:${b.variantId ?? ''}:${b.cartItemId ?? ''}`
+      )
+    )
+)
 
 export function loadCheckoutAttempt(storage, storageKey, fingerprint, uuid = () => crypto.randomUUID()) {
   try {

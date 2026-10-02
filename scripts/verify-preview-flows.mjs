@@ -20,6 +20,16 @@ const products = Array.from({ length: 6 }, (_, index) => ({
   price: 5000, compareAtPrice: 6000, currency: 'NGN', isFeatured: true,
   image: { url: '/favicon.svg', altText: `Sample ${index}` }, categories: [],
 }))
+const variantProduct = {
+  _id: 'variant-product', title: 'Variant Fabric', price: 5000, currency: 'NGN',
+  image: { url: '/favicon.svg', altText: 'Variant Fabric' }, categories: [],
+  variants: [
+    { variantId: 'red-id', colorName: 'Red', image: { url: '/red.jpg', altText: 'Red fabric' }, isAvailable: true },
+    { variantId: 'blue-id', colorName: 'Blue', image: { url: '/blue.jpg', altText: 'Blue fabric' }, isAvailable: true },
+    { variantId: 'unavailable-id', colorName: 'Unavailable', image: { url: '/unavailable.jpg', altText: 'Unavailable fabric' }, isAvailable: false },
+  ],
+}
+let cartItems = []
 const user = { id: 'user1', firstName: 'Test', lastName: 'Customer', email: 'test@example.com' }
 const server = await createServer({
   server: { host: '127.0.0.1', port: 0 },
@@ -28,9 +38,36 @@ const server = await createServer({
     server.middlewares.use((req, res, next) => {
       if (!req.url.startsWith('/api/v1/')) return next()
       const path = req.url.slice('/api/v1'.length)
-      requests.push({ path, method: req.method, token: req.headers.authorization })
       res.setHeader('Content-Type', 'application/json')
       const send = (data, status = 200) => { res.statusCode = status; res.end(JSON.stringify({ success: status === 200, data })) }
+      if (req.method === 'POST' && path === '/cart/items') {
+        let body = ''
+        req.setEncoding('utf8')
+        req.on('data', (chunk) => { body += chunk })
+        req.on('end', () => {
+          const item = JSON.parse(body)
+          requests.push({ path, method: req.method, token: req.headers.authorization, body: item })
+          const current = cartItems.find((line) => line.productId === item.productId && line.variantId === (item.variantId ?? null))
+          if (current) current.quantity += item.quantity
+          else {
+            const product = item.productId === variantProduct._id ? variantProduct : products.find((candidate) => candidate._id === item.productId) ?? products[0]
+            const variant = product.variants?.find((candidate) => candidate.variantId === item.variantId)
+            cartItems.push({
+              cartItemId: `cart-${cartItems.length + 1}`,
+              productId: item.productId,
+              variantId: item.variantId ?? null,
+              colorName: variant?.colorName ?? null,
+              selectedImage: variant?.image ?? null,
+              quantity: item.quantity,
+              price: product.price,
+              product: { title: product.title, image: product.image },
+            })
+          }
+          return send({ items: cartItems, subtotal: cartItems.reduce((total, line) => total + line.price * line.quantity, 0), currency: 'NGN' })
+        })
+        return
+      }
+      requests.push({ path, method: req.method, token: req.headers.authorization })
       if (path.startsWith('/products/preview/')) {
         if (mode === 'error') return send(null, 500)
         if (mode === 'loading') return setTimeout(() => send(products), 1200)
@@ -41,8 +78,10 @@ const server = await createServer({
       if (path === '/auth/me') return send({ user })
       if (path === '/auth/logout') return send({})
       if (path.startsWith('/products?')) return send(products)
+      if (path === `/products/${variantProduct._id}`) return send(variantProduct)
       if (path.startsWith('/products/')) return send(products[0])
-      if (path.startsWith('/cart')) return send({ items: [], subtotal: 0 })
+      if (path === '/cart') return send({ items: cartItems, subtotal: cartItems.reduce((total, line) => total + line.price * line.quantity, 0), currency: 'NGN' })
+      if (path.startsWith('/cart')) return send({ items: cartItems, subtotal: 0 })
       if (path.startsWith('/wishlist')) return send({ products: [] })
       if (path.startsWith('/categories')) return send([])
       return send([])
@@ -89,6 +128,13 @@ try {
   const waitFor = async (expression) => {
     for (let i = 0; i < 150; i++) { if (await evaluate(expression)) return; await sleep(100) }
     throw new Error(`Timed out: ${expression}; page: ${await evaluate('document.body.innerText')}`)
+  }
+  const waitForRequestCount = async (predicate, count) => {
+    for (let i = 0; i < 150; i++) {
+      if (requests.filter(predicate).length >= count) return
+      await sleep(100)
+    }
+    throw new Error(`Timed out waiting for ${count} matching API requests`)
   }
   const visit = async (path) => { await call('Page.navigate', { url: base + path }); await waitFor('document.readyState === "complete" && !!document.querySelector("#root")') }
   const landing = async () => { await visit('/'); await waitFor('document.querySelectorAll("article").length === 12') }
@@ -143,6 +189,36 @@ try {
   await waitFor('document.querySelectorAll("article").length > 0')
   assert.ok(requests.some((r) => r.path.startsWith('/products?') && r.token === 'Bearer test-token'))
   console.log('PASS login return, session reload, catalog/detail and authenticated cart/wishlist bearer requests')
+
+  await visit('/shop/product/variant-product')
+  await waitFor('document.body.innerText.includes("Variant Fabric") && !!document.querySelector("button[aria-label=\\"Red\\"]")')
+  const postsBeforeVariant = requests.filter((request) => request.path === '/cart/items' && request.method === 'POST').length
+  await evaluate('Array.from(document.querySelectorAll("button")).find(button => button.textContent.includes("Add to Cart") || button.textContent.includes("Added to Cart")).click()')
+  assert.ok(await evaluate('Array.from(document.querySelectorAll("[role=alert]")).some(node => node.textContent.includes("Choose at least one available color"))'))
+  assert.equal(await evaluate('document.querySelector("button[aria-label=\\"Unavailable (unavailable)\\"]").disabled'), true)
+  await evaluate('document.querySelector("button[aria-label=\\"Red\\"]").click()')
+  assert.equal(await evaluate('document.querySelector("main section > div.aspect-square img").getAttribute("src")'), '/red.jpg')
+  await evaluate('document.querySelector("button[aria-label=\\"Blue\\"]").click()')
+  assert.equal(await evaluate('document.querySelector("main section > div.aspect-square img").getAttribute("src")'), '/blue.jpg')
+  assert.equal(await evaluate('document.querySelector("button[aria-label=\\"Red\\"]").getAttribute("aria-pressed")'), 'true')
+  assert.equal(await evaluate('document.querySelector("button[aria-label=\\"Blue\\"]").getAttribute("aria-pressed")'), 'true')
+  await evaluate('Array.from(document.querySelectorAll("button")).find(button => button.textContent.includes("Add to Cart") || button.textContent.includes("Added to Cart")).click()')
+  await waitFor('document.body.innerText.includes("Added to Cart")')
+  await waitForRequestCount((request) => request.path === '/cart/items' && request.method === 'POST' && request.body?.productId === 'variant-product', 2)
+  await evaluate('document.querySelector("button[aria-label=\\"Blue\\"]").click()')
+  assert.equal(await evaluate('document.querySelector("button[aria-label=\\"Blue\\"]").getAttribute("aria-pressed")'), 'false')
+  await evaluate('Array.from(document.querySelectorAll("button")).find(button => button.textContent.includes("Add to Cart") || button.textContent.includes("Added to Cart")).click()')
+  await waitForRequestCount((request) => request.path === '/cart/items' && request.method === 'POST' && request.body?.productId === 'variant-product', 3)
+  const variantRequests = requests.filter((request) => request.path === '/cart/items' && request.body?.productId === 'variant-product')
+  assert.deepEqual(variantRequests.map((request) => request.body.variantId), ['red-id', 'blue-id', 'red-id'])
+  assert.equal(requests.filter((request) => request.path === '/cart/items' && request.method === 'POST').length, postsBeforeVariant + 3)
+  await visit('/cart')
+  await waitFor('document.body.innerText.includes("Color: Red") && document.body.innerText.includes("Color: Blue")')
+  const savedVariantLines = await evaluate(`Array.from(document.querySelectorAll("main article")).map(article => ({ text: article.innerText, quantity: article.querySelector("span.min-w-6")?.textContent.trim() })).filter(line => line.text.includes("Variant Fabric"))`)
+  assert.equal(savedVariantLines.length, 2)
+  assert.ok(savedVariantLines.some((line) => line.text.includes('Color: Red') && line.quantity === '2'))
+  assert.ok(savedVariantLines.some((line) => line.text.includes('Color: Blue') && line.quantity === '1'))
+  console.log('PASS multi-color selection, unavailable colors, distinct cart lines, same-color quantity merge and reload')
 
   await evaluate('localStorage.clear()')
   mode = 'loading'; await visit('/'); await waitFor('document.body.innerText.includes("Loading latest arrivals")'); await waitFor('document.querySelectorAll("article").length === 12')

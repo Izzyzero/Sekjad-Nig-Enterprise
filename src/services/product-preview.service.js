@@ -12,6 +12,7 @@ const loadPreview = async (section) => {
     name: product.title,
     image: product.image?.url ?? '',
     imageAlt: product.image?.altText || product.title,
+    variants: product.variants ?? [],
   }))
 }
 

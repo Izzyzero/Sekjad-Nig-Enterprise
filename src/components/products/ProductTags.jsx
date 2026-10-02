@@ -8,7 +8,7 @@ export function ProductTags({ tags, className = '' }) {
   return (
     <div className={`flex flex-wrap gap-1.5 ${className}`} aria-label="Product tags">
       {values.map((tag, index) => (
-        <span key={`${tag}-${index}`} className="rounded-full bg-[#E67E22] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-white shadow-sm">
+        <span key={`${tag}-${index}`} className="rounded-full bg-[#E67E22] px-2.5 py-1 text-[8px] font-semibold uppercase tracking-[0.08em] text-white shadow-sm">
           {tag}
         </span>
       ))}

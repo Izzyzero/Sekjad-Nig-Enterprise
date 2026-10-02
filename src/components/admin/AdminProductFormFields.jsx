@@ -9,7 +9,16 @@ const inputClass = (hasError) =>
     hasError ? 'border-red-400' : 'border-[#E5E7EB]'
   }`
 
-export function AdminProductFormFields({ register, errors, imagePreview, onImageChange, galleryPreviews, onGalleryChange }) {
+export function AdminProductFormFields({
+  register,
+  errors,
+  imagePreview,
+  onImageChange,
+  galleryPreviews,
+  onGalleryChange,
+  variants = [],
+  onVariantsChange,
+}) {
   const { data: categories = [], isLoading: categoriesLoading } = useCategories()
 
   return (
@@ -81,6 +90,70 @@ export function AdminProductFormFields({ register, errors, imagePreview, onImage
           </div>
         )}
       </div>
+
+      <section aria-labelledby="product-variants-heading">
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 id="product-variants-heading" className="text-sm font-medium text-[#111827]">Color Variants</h2>
+            <p className="mt-1 text-xs text-[#6B7280]">Add each selectable color and its image. Gallery images are managed separately.</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => onVariantsChange((current) => [...current, { colorName: '', image: { url: '', altText: '' }, isAvailable: true }])}
+            className="rounded-full border border-[#E5E7EB] px-4 py-2 text-xs font-semibold text-[#111827] hover:border-[#E67E22]"
+          >
+            Add color
+          </button>
+        </div>
+        <div className="space-y-4">
+          {variants.map((variant, index) => (
+            <fieldset key={variant.variantId ?? `new-${index}`} className="grid gap-3 rounded-xl border border-[#E5E7EB] p-4 sm:grid-cols-[minmax(0,1fr)_minmax(0,1.5fr)_auto]">
+              <legend className="sr-only">Color variant {index + 1}</legend>
+              <div>
+                <label htmlFor={`variant-color-${index}`} className="mb-1.5 block text-xs font-medium text-[#111827]">Color name</label>
+                <input
+                  id={`variant-color-${index}`}
+                  value={variant.colorName ?? ''}
+                  onChange={(event) => onVariantsChange((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, colorName: event.target.value } : item))}
+                  className={inputClass(false)}
+                  placeholder="e.g. Burgundy"
+                />
+              </div>
+              <div>
+                <label htmlFor={`variant-image-${index}`} className="mb-1.5 block text-xs font-medium text-[#111827]">Color image URL</label>
+                <input
+                  id={`variant-image-${index}`}
+                  value={variant.image?.url ?? ''}
+                  onChange={(event) => onVariantsChange((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, image: { ...item.image, url: event.target.value } } : item))}
+                  className={inputClass(false)}
+                  placeholder="https://..."
+                  type="url"
+                />
+                {variant.image?.url && <img src={variant.image.url} alt={variant.image.altText || variant.colorName || 'Variant preview'} className="mt-2 size-14 rounded-lg object-cover" />}
+              </div>
+              <div className="flex items-center justify-between gap-3 sm:flex-col sm:items-start sm:justify-center">
+                <label className="flex items-center gap-2 text-xs text-[#111827]">
+                  <input
+                    type="checkbox"
+                    checked={variant.isAvailable !== false}
+                    onChange={(event) => onVariantsChange((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, isAvailable: event.target.checked } : item))}
+                    className="size-4 accent-[#E67E22]"
+                  />
+                  Available
+                </label>
+                <button
+                  type="button"
+                  onClick={() => onVariantsChange((current) => current.filter((_, itemIndex) => itemIndex !== index))}
+                  className="text-xs font-medium text-red-600 hover:underline"
+                >
+                  Remove
+                </button>
+              </div>
+            </fieldset>
+          ))}
+          {variants.length === 0 && <p className="rounded-xl bg-stone-50 px-4 py-3 text-xs text-[#6B7280]">No color variants. Customers can add this product directly to their cart.</p>}
+        </div>
+      </section>
     </div>
   )
 }

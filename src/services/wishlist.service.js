@@ -10,6 +10,7 @@ const normalizeProduct = (product = {}) => ({
   id: product.id ?? product._id,
   name: product.name ?? product.title ?? '',
   image: typeof product.image === 'string' ? product.image : product.image?.url ?? '',
+  variants: product.variants ?? [],
 })
 
 export const normalizeWishlist = (response) => {

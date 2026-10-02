@@ -11,7 +11,6 @@ export function ProductQuickView({ product, onClose }) {
   const navigate = useNavigate()
   const { addToCart } = useCart()
   const [quantity, setQuantity] = useState(1)
-  const [selectedColor, setSelectedColor] = useState(product?.colors?.[0] ?? null)
 
   useEffect(() => {
     const handleKeyDown = (e) => e.key === 'Escape' && onClose()
@@ -27,6 +26,10 @@ export function ProductQuickView({ product, onClose }) {
 
   const handleAddToCart = () => addToCart(product, quantity)
   const handleBuyNow = () => {
+    if (product.variants?.length) {
+      navigate(`/shop/product/${product.id}`)
+      return
+    }
     if (addToCart(product, quantity) === false) return
     navigate('/cart')
   }
@@ -72,28 +75,6 @@ export function ProductQuickView({ product, onClose }) {
             <p className="text-[#6B7280] mb-5 text-sm leading-relaxed">{product.description}</p>
           )}
 
-          {product.colors?.length > 0 && (
-            <div className="mb-5">
-              <p className="text-[#111827] mb-2 text-xs font-semibold uppercase tracking-wide">Color</p>
-              <div className="flex gap-2">
-                {product.colors.map((color) => (
-                  <button
-                    key={color.name}
-                    type="button"
-                    onClick={() => setSelectedColor(color)}
-                    aria-pressed={selectedColor?.name === color.name}
-                    aria-label={color.name}
-                    className={`flex size-9 items-center justify-center rounded-full border-2 transition ${
-                      selectedColor?.name === color.name ? 'border-[#E67E22]' : 'border-transparent'
-                    }`}
-                  >
-                    <span className="size-6 rounded-full border border-black/10" style={{ backgroundColor: color.hex }} />
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
           <div className="mb-6">
             <p className="text-[#111827] mb-2 text-xs font-semibold uppercase tracking-wide">Quantity</p>
             <div className="border-[#E5E7EB] inline-flex items-center rounded-full border">
@@ -119,28 +100,42 @@ export function ProductQuickView({ product, onClose }) {
 
           <div className="flex flex-col gap-3">
             <div className="flex gap-3">
-              <button
-                type="button"
-                onClick={handleAddToCart}
-                className="border-[#E67E22] text-[#E67E22] flex-1 rounded-full border py-3 text-sm font-semibold transition hover:bg-[#E67E22]/5"
-              >
-                Add to Cart
-              </button>
-              <button
-                type="button"
-                onClick={handleBuyNow}
-                className="flex-1 rounded-full bg-[#E67E22] py-3 text-sm font-semibold text-white transition hover:bg-[#d4711f]"
-              >
-                Buy Now
-              </button>
+              {product.variants?.length ? (
+                <button
+                  type="button"
+                  onClick={() => navigate(`/shop/product/${product.id}`)}
+                  className="border-[#E67E22] text-[#E67E22] flex-1 rounded-full border py-3 text-sm font-semibold transition hover:bg-[#E67E22]/5"
+                >
+                  Choose Color
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={handleAddToCart}
+                  className="border-[#E67E22] text-[#E67E22] flex-1 rounded-full border py-3 text-sm font-semibold transition hover:bg-[#E67E22]/5"
+                >
+                  Add to Cart
+                </button>
+              )}
+              {!product.variants?.length && (
+                <button
+                  type="button"
+                  onClick={handleBuyNow}
+                  className="flex-1 rounded-full bg-[#E67E22] py-3 text-sm font-semibold text-white transition hover:bg-[#d4711f]"
+                >
+                  Buy Now
+                </button>
+              )}
             </div>
-            <button
-              type="button"
-              onClick={() => navigate(`/shop/product/${product.id}`)}
-              className="text-[#6B7280] hover:text-[#111827] text-sm font-medium underline"
-            >
-              View Full Details
-            </button>
+            {!product.variants?.length && (
+              <button
+                type="button"
+                onClick={() => navigate(`/shop/product/${product.id}`)}
+                className="text-[#6B7280] hover:text-[#111827] text-sm font-medium underline"
+              >
+                View Full Details
+              </button>
+            )}
           </div>
         </div>
       </div>

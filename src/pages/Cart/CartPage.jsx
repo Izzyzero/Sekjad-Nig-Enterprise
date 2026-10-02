@@ -16,6 +16,7 @@ export function CartPage() {
   const { user } = useAuth()
   const userId = user?.id ?? user?._id ?? 'current-user'
   const {
+    cart,
     items,
     updateQuantity,
     removeFromCart,
@@ -29,7 +30,7 @@ export function CartPage() {
   } = useCart()
   const fingerprint = checkoutFingerprint(items)
   const itemCount = items.reduce((total, item) => total + item.quantity, 0)
-  const subtotal = items.reduce((total, item) => total + Number(item.price || 0) * item.quantity, 0)
+  const subtotal = Number(cart?.subtotal ?? 0)
 
   return (
     <div className="min-h-screen bg-[#FAF9F7]">
@@ -108,12 +109,12 @@ export function CartPage() {
             <section className="min-w-0 space-y-3">
               {items.map((item) => (
                 <article
-                  key={item.id}
+                  key={item.cartItemId}
                   className="flex min-w-0 gap-3 rounded-2xl border border-[#EEEAE6] bg-white p-3 sm:gap-5 sm:p-5"
                 >
                   {/* Image — fixed square, compact */}
                   <Link
-                    to={`/shop/product/${item.id}`}
+                    to={`/shop/product/${item.productId}`}
                     className="relative block h-16 w-16 shrink-0 overflow-hidden rounded-xl bg-stone-100 sm:h-24 sm:w-24"
                   >
                     {item.image ? (
@@ -139,11 +140,14 @@ export function CartPage() {
                           </p>
                         )}
                         <Link
-                          to={`/shop/product/${item.id}`}
+                          to={`/shop/product/${item.productId}`}
                           className="block [overflow-wrap:anywhere] font-display text-base font-normal text-[#111827] transition hover:text-[#E67E22] sm:text-lg"
                         >
                           {item.name}
                         </Link>
+                        {item.colorName && (
+                          <p className="mt-1 text-xs text-[#6B7280]">Color: {item.colorName}</p>
+                        )}
                         {(item.brand || item.sku) && (
                           <p className="mt-0.5 [overflow-wrap:anywhere] text-xs text-[#C4BDB6]">
                             {item.brand || `SKU: ${item.sku}`}
@@ -168,9 +172,9 @@ export function CartPage() {
                       <div className="flex min-h-11 max-w-full items-center rounded-full border border-[#E5E7EB] bg-[#FAF9F7] px-1">
                         <button
                           type="button"
-                          onClick={() => updateQuantity(item.id, item.quantity - 1)}
+                          onClick={() => updateQuantity(item.cartItemId, item.quantity - 1)}
                           disabled={item.quantity <= 1 || isUpdating || preparingOrder}
-                          aria-label={`Decrease ${item.name} quantity`}
+                          aria-label={`Decrease ${item.name}${item.colorName ? ` ${item.colorName}` : ''} quantity`}
                           className="grid size-11 shrink-0 place-items-center rounded-full text-[#6B7280] transition hover:bg-white hover:text-[#111827] disabled:opacity-30"
                         >
                           <Minus size={12} />
@@ -180,9 +184,9 @@ export function CartPage() {
                         </span>
                         <button
                           type="button"
-                          onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                          onClick={() => updateQuantity(item.cartItemId, item.quantity + 1)}
                           disabled={isUpdating || preparingOrder}
-                          aria-label={`Increase ${item.name} quantity`}
+                          aria-label={`Increase ${item.name}${item.colorName ? ` ${item.colorName}` : ''} quantity`}
                           className="grid size-11 shrink-0 place-items-center rounded-full text-[#6B7280] transition hover:bg-white hover:text-[#111827]"
                         >
                           <Plus size={12} />
@@ -191,8 +195,9 @@ export function CartPage() {
 
                       <button
                         type="button"
-                        onClick={() => removeFromCart(item.id)}
+                        onClick={() => removeFromCart(item.cartItemId)}
                         disabled={isUpdating || preparingOrder}
+                        aria-label={`Remove ${item.name}${item.colorName ? ` ${item.colorName}` : ''} from cart`}
                         className="flex min-h-11 items-center gap-1 px-1 text-xs text-[#C4BDB6] transition hover:text-red-400"
                       >
                         <Trash2 size={13} />
