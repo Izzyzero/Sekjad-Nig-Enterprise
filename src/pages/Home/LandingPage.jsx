@@ -274,15 +274,10 @@ export function LandingPage() {
                     <span className="text-orange font-bold">{formatCurrency(product.price, product.currency)}</span>
                     {product.compareAtPrice && <span className="text-sm text-gray-400 line-through">{formatCurrency(product.compareAtPrice, product.currency)}</span>}
                   </div>
-                  {product.variants?.length > 0 ? (
-                    <Link to={productRoute(product.id)} className="bg-charcoal hover:bg-orange block w-full rounded-full py-3 text-center text-xs font-semibold tracking-wide text-white transition">
-                      Choose Color
-                    </Link>
-                  ) : (
+                  
                     <button className="bg-charcoal hover:bg-orange w-full rounded-full py-3 text-xs font-semibold tracking-wide text-white transition" onClick={() => addToCart(product)} type="button">
                       Add to Cart
                     </button>
-                  )}
                 </article>
               )})}
             </div>

@@ -52,14 +52,7 @@ export function ProductCard({ product }) {
         )}
       </div>
 
-      {product.variants?.length > 0 ? (
-        <Link
-          to={detailHref}
-          className="block w-full rounded-full bg-[#1F2937] py-3 text-center text-xs font-semibold tracking-wide text-white transition hover:bg-[#E67E22]"
-        >
-          Choose Color
-        </Link>
-      ) : (
+      
         <button
           type="button"
           onClick={() => addToCart(product)}
@@ -67,7 +60,6 @@ export function ProductCard({ product }) {
         >
           Add to Cart
         </button>
-      )}
     </article>
   )
 }

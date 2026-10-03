@@ -48,14 +48,24 @@ export function ProductDetailsPage() {
     if (adding || isUpdating) return
     updateSelection({ error: '', added: false })
     const selectedVariants = variants.filter((variant) => selectedVariantIds.includes(variant.variantId))
-    if (variants.length > 0 && (!selectedVariants.length || selectedVariants.some((variant) => !isVariantAvailable(variant)))) {
-      updateSelection({ error: 'Choose at least one available color before adding this product to your cart.' })
+    if (selectedVariants.some((variant) => !isVariantAvailable(variant))) {
+      updateSelection({ error: 'A selected color is unavailable. Please remove it from your selection.' })
       return
     }
     setAdding(true)
     const failures = []
     let addedCount = 0
     try {
+      if (selectedVariants.length === 0) {
+        try {
+          const result = await addToCartAsync(product, quantity)
+          if (result === false) return
+          addedCount += 1
+        } catch (error) {
+          updateSelection({ error: getApiError(error, 'Could not add this product.') })
+          return
+        }
+      }
       for (const variant of selectedVariants) {
         try {
           const result = await addToCartAsync(product, quantity, variant.variantId)
@@ -150,7 +160,7 @@ export function ProductDetailsPage() {
               {variants.length > 0 && (
                 <div className="mt-6">
                   <p className="mb-1 text-xs font-semibold uppercase tracking-[0.18em] text-[#6B7280]">Available colors</p>
-                  <p className="mb-3 text-xs text-[#6B7280]">Select one or more colors. The quantity below applies to each selected color.</p>
+                  <p className="mb-3 text-xs text-[#6B7280]">Optional: select other colors. Without a selection, the main product will be added. The quantity below applies to each selected color.</p>
                   <div className="flex flex-wrap gap-3">
                     {variants.map((variant) => {
                       const isSelected = selectedVariantIds.includes(variant.variantId)

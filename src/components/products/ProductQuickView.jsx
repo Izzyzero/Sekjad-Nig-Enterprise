@@ -100,15 +100,7 @@ export function ProductQuickView({ product, onClose }) {
 
           <div className="flex flex-col gap-3">
             <div className="flex gap-3">
-              {product.variants?.length ? (
-                <button
-                  type="button"
-                  onClick={() => navigate(`/shop/product/${product.id}`)}
-                  className="border-[#E67E22] text-[#E67E22] flex-1 rounded-full border py-3 text-sm font-semibold transition hover:bg-[#E67E22]/5"
-                >
-                  Choose Color
-                </button>
-              ) : (
+              
                 <button
                   type="button"
                   onClick={handleAddToCart}
@@ -116,7 +108,6 @@ export function ProductQuickView({ product, onClose }) {
                 >
                   Add to Cart
                 </button>
-              )}
               {!product.variants?.length && (
                 <button
                   type="button"

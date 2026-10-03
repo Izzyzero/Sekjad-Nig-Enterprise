@@ -167,11 +167,7 @@ export function Wishlist() {
                       <span className="text-orange text-sm font-bold">{formatCurrency(item.price)}</span>
                       {item.compareAtPrice && <span className="text-xs text-charcoal/30 line-through">{formatCurrency(item.compareAtPrice)}</span>}
                     </div>
-                    {item.variants?.length > 0 ? (
-                      <Link to={`/shop/product/${item.id}`} className="block w-full rounded-full bg-charcoal py-2 text-center text-xs font-semibold text-white transition-colors hover:bg-orange">
-                        Choose Color
-                      </Link>
-                    ) : (
+                    
                       <button
                         type="button"
                         disabled={isCartUpdating}
@@ -184,7 +180,6 @@ export function Wishlist() {
                         <ShoppingCart size={13} strokeWidth={1.8} />
                         {justAdded === item.id ? 'Added ✓' : 'Add to Cart'}
                       </button>
-                    )}
                   </div>
                 </div>
               ))}

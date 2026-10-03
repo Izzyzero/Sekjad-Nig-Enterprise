@@ -38,7 +38,7 @@ export function useCart() {
   const addVariables = (product, quantity, variantId) => {
     const productId = product?.id ?? product?._id
     if (!productId || !requireAuth(`/shop/product/${encodeURIComponent(productId)}`)) return null
-    if (product?.variants?.length && !isVariantAvailable(product.variants.find((variant) => variant.variantId === variantId))) return null
+    if (variantId && !isVariantAvailable(product.variants?.find((variant) => variant.variantId === variantId))) return null
     return { productId, variantId, quantity }
   }
 
