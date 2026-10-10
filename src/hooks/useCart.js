@@ -14,6 +14,8 @@ export function useCart() {
     queryKey,
     queryFn: cartService.get,
     enabled: isAuthenticated && !isAuthLoading,
+    // Reuse the cart returned by mutations when another cart consumer mounts.
+    staleTime: 30_000,
   })
 
   const updateCachedCart = (cart) => queryClient.setQueryData(queryKey, cart)
@@ -35,21 +37,21 @@ export function useCart() {
     onSuccess: updateCachedCart,
   })
 
-  const addVariables = (product, quantity, variantId) => {
+  const addVariables = (product, quantity, variantId, selectedImage) => {
     const productId = product?.id ?? product?._id
     if (!productId || !requireAuth(`/shop/product/${encodeURIComponent(productId)}`)) return null
     if (variantId && !isVariantAvailable(product.variants?.find((variant) => variant.variantId === variantId))) return null
-    return { productId, variantId, quantity }
+    return { productId, variantId, quantity, selectedImage }
   }
 
-  const addToCart = (product, quantity = 1, variantId) => {
-    const variables = addVariables(product, quantity, variantId)
+  const addToCart = (product, quantity = 1, variantId, selectedImage) => {
+    const variables = addVariables(product, quantity, variantId, selectedImage)
     if (!variables) return false
     addMutation.mutate(variables)
     return true
   }
-  const addToCartAsync = (product, quantity = 1, variantId) => {
-    const variables = addVariables(product, quantity, variantId)
+  const addToCartAsync = (product, quantity = 1, variantId, selectedImage) => {
+    const variables = addVariables(product, quantity, variantId, selectedImage)
     if (!variables) return Promise.resolve(false)
     return addMutation.mutateAsync(variables)
   }

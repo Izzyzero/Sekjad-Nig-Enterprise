@@ -57,7 +57,7 @@ export const normalizeAdminOrder = (order) => ({
     colorName: item.colorName ?? null,
     quantity: Number(item.quantity ?? 1),
     price: item.price ?? Number(item.unitAmount ?? 0) / 100,
-    image: imageOf(item.variantImageUrl ?? item.image ?? item.imageUrl ?? item.product?.image),
+    image: imageOf(item.selectedImage ?? item.variantImageUrl ?? item.image ?? item.imageUrl ?? item.product?.image),
   })),
 })
 

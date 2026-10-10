@@ -89,3 +89,16 @@ The React Compiler is not enabled on this template because of its impact on dev 
 ## Expanding the ESLint configuration
 
 If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+
+## Gallery image cart selection
+
+Product thumbnails select the image submitted by Add to Cart. Admins upload gallery
+images without color names. Existing variant data is preserved when editing.
+
+The backend must accept `selectedImage` in `POST /cart/items`, validate that it
+belongs to the product main image or gallery, and use `(productId, selectedImage)`
+to distinguish cart lines. Adding the same image again increments that line;
+different images must remain separate. Return `selectedImage` on cart reads and
+copy it into payment/WhatsApp order snapshots. Prices must come from the product
+on the server. This repository contains only the frontend; these backend changes
+are required before the feature works end to end.

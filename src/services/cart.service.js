@@ -47,10 +47,11 @@ export const normalizeCart = (response) => {
 
 export const cartService = {
   get: () => api.get('/cart').then(normalizeCart),
-  addItem: ({ productId, variantId, quantity = 1 }) =>
+  addItem: ({ productId, variantId, selectedImage, quantity = 1 }) =>
     api.post('/cart/items', {
       productId,
       ...(variantId ? { variantId } : {}),
+      ...(selectedImage ? { selectedImage } : {}),
       quantity,
     }).then(normalizeCart),
   updateItemQuantity: (cartItemId, quantity) =>

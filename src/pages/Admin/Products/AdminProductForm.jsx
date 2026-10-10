@@ -48,7 +48,6 @@ function AdminProductForm({ id, existingProduct }) {
   const [imagePreview, setImagePreview] = useState(existingProduct?.image ?? null)
   const [galleryFiles, setGalleryFiles] = useState([])
   const [galleryPreviews, setGalleryPreviews] = useState(existingProduct?.gallery ?? [])
-  const [variants, setVariants] = useState(existingProduct?.variants ?? [])
   const [submitError, setSubmitError] = useState('')
 
   const {
@@ -105,20 +104,7 @@ function AdminProductForm({ id, existingProduct }) {
         setSubmitError('Select a product image.')
         return
       }
-      const normalizedVariants = variants.map((variant) => ({
-        ...(variant.variantId ? { variantId: variant.variantId } : {}),
-        colorName: variant.colorName.trim(),
-        image: {
-          url: variant.image?.url?.trim() ?? '',
-          altText: variant.image?.altText?.trim() ?? variant.colorName.trim(),
-        },
-        isAvailable: Boolean(variant.isAvailable),
-      }))
-      if (normalizedVariants.some((variant) => !variant.colorName || !variant.image.url)) {
-        setSubmitError('Each color variant needs a color name and image URL.')
-        return
-      }
-      const payload = { ...formValues, image: imageFile, gallery: galleryFiles, variants: normalizedVariants }
+      const payload = { ...formValues, image: imageFile, gallery: galleryFiles, variants: existingProduct?.variants ?? [] }
 
       if (isEditMode) {
         await updateMutation.mutateAsync({ id, payload })
@@ -160,8 +146,6 @@ function AdminProductForm({ id, existingProduct }) {
           onImageChange={handleImageChange}
           galleryPreviews={galleryPreviews}
           onGalleryChange={handleGalleryChange}
-          variants={variants}
-          onVariantsChange={setVariants}
         />
 
         <div className="mt-7 flex gap-3">

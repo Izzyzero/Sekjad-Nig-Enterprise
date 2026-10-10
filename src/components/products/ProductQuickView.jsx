@@ -26,7 +26,7 @@ export function ProductQuickView({ product, onClose }) {
 
   const handleAddToCart = () => addToCart(product, quantity)
   const handleBuyNow = () => {
-    if (product.variants?.length) {
+    if (product.gallery?.length) {
       navigate(`/shop/product/${product.id}`)
       return
     }

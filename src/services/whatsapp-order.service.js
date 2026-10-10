@@ -2,16 +2,17 @@
 
 export const checkoutFingerprint = (items) => JSON.stringify(
   items
-    .map(({ id, productId, cartItemId, variantId, quantity, price }) => ({
+    .map(({ id, productId, cartItemId, variantId, selectedImage, quantity, price }) => ({
       productId: productId ?? id,
       cartItemId,
       variantId: variantId ?? null,
+      selectedImage: selectedImage ?? null,
       quantity,
       price,
     }))
     .sort((a, b) =>
-      `${a.productId}:${a.variantId ?? ''}:${a.cartItemId ?? ''}`.localeCompare(
-        `${b.productId}:${b.variantId ?? ''}:${b.cartItemId ?? ''}`
+      `${a.productId}:${a.variantId ?? ''}:${a.selectedImage ?? ''}:${a.cartItemId ?? ''}`.localeCompare(
+        `${b.productId}:${b.variantId ?? ''}:${b.selectedImage ?? ''}:${b.cartItemId ?? ''}`
       )
     )
 )

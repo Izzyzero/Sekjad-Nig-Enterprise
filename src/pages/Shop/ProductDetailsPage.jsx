@@ -8,7 +8,6 @@ import { useCategories } from '../../hooks/useCategories'
 import { useCart } from '../../hooks/useCart'
 import { useWishlist } from '../../hooks/useWishlist'
 import { getApiError } from '../../services/api'
-import { isVariantAvailable } from '../../services/product.service'
 
 const formatNaira = (value) => `₦${Number(value ?? 0).toLocaleString('en-NG')}`
 
@@ -19,26 +18,22 @@ export function ProductDetailsPage() {
   const { items: cartItems, addToCartAsync, isUpdating } = useCart()
   const { isWishlisted, toggle } = useWishlist()
   const [quantity, setQuantity] = useState(1)
-  const [selection, setSelection] = useState({ productId: id, galleryImage: '', variantIds: [], previewVariantId: '', added: false, error: '' })
+  const [selection, setSelection] = useState({ productId: id, galleryImage: '', added: false, error: '' })
   const [adding, setAdding] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
 
-  const currentSelection = selection.productId === id ? selection : { productId: id, galleryImage: '', variantIds: [], previewVariantId: '', added: false, error: '' }
-  const { galleryImage: selectedGalleryImage, variantIds: selectedVariantIds, previewVariantId, added, error: addError } = currentSelection
+  const currentSelection = selection.productId === id ? selection : { productId: id, galleryImage: '', added: false, error: '' }
+  const { galleryImage: selectedGalleryImage, added, error: addError } = currentSelection
   const updateSelection = (updates) => setSelection((current) => ({
-    ...(current.productId === id ? current : { productId: id, galleryImage: '', variantIds: [], previewVariantId: '', added: false, error: '' }),
+    ...(current.productId === id ? current : { productId: id, galleryImage: '', added: false, error: '' }),
     ...updates,
   }))
   const images = useMemo(
     () => (product ? [product.image, ...(product.gallery ?? [])].filter(Boolean) : []),
     [product]
   )
-  const variants = product?.variants ?? []
-  const previewVariant = variants.find((variant) => variant.variantId === previewVariantId)
-  const activeImage = selectedGalleryImage || previewVariant?.image?.url || images[0]
-  const activeImageAlt = selectedGalleryImage
-    ? product?.imageAlt || product?.name
-    : previewVariant?.image?.altText || previewVariant?.colorName || product?.imageAlt || product?.name
+  const activeImage = selectedGalleryImage || images[0]
+  const activeImageAlt = product?.imageAlt || product?.name
   const categoryName =
     product?.categoryLabel || categories.find((category) => category.id === product?.category)?.label
   const cartCount = cartItems.reduce((total, item) => total + item.quantity, 0)
@@ -47,45 +42,16 @@ export function ProductDetailsPage() {
   const handleAddToCart = async () => {
     if (adding || isUpdating) return
     updateSelection({ error: '', added: false })
-    const selectedVariants = variants.filter((variant) => selectedVariantIds.includes(variant.variantId))
-    if (selectedVariants.some((variant) => !isVariantAvailable(variant))) {
-      updateSelection({ error: 'A selected color is unavailable. Please remove it from your selection.' })
-      return
-    }
     setAdding(true)
-    const failures = []
-    let addedCount = 0
     try {
-      if (selectedVariants.length === 0) {
-        try {
-          const result = await addToCartAsync(product, quantity)
-          if (result === false) return
-          addedCount += 1
-        } catch (error) {
-          updateSelection({ error: getApiError(error, 'Could not add this product.') })
-          return
-        }
-      }
-      for (const variant of selectedVariants) {
-        try {
-          const result = await addToCartAsync(product, quantity, variant.variantId)
-          if (result === false) return
-          addedCount += 1
-        } catch (error) {
-          failures.push(`${variant.colorName}: ${getApiError(error, 'Could not add this color.')}`)
-        }
-      }
-      if (failures.length) {
-        const prefix = addedCount
-          ? `Added ${addedCount} selected color${addedCount === 1 ? '' : 's'}, but could not add `
-          : 'Could not add '
-        updateSelection({ error: `${prefix}${failures.join('; ')}` })
-      } else if (addedCount > 0 || variants.length === 0) {
-        updateSelection({ added: true })
-        window.setTimeout(() => setSelection((current) =>
-          current.productId === id ? { ...current, added: false } : current
-        ), 1800)
-      }
+      const result = await addToCartAsync(product, quantity, undefined, activeImage)
+      if (result === false) return
+      updateSelection({ added: true })
+      window.setTimeout(() => setSelection((current) =>
+        current.productId === id ? { ...current, added: false } : current
+      ), 1800)
+    } catch (error) {
+      updateSelection({ error: getApiError(error, 'Could not add this selected image.') })
     } finally {
       setAdding(false)
     }
@@ -145,11 +111,11 @@ export function ProductDetailsPage() {
                     <button
                       key={image}
                       type="button"
-                      onClick={() => updateSelection({ galleryImage: image })}
-                      aria-label="View gallery image"
-                      aria-current={selectedGalleryImage === image || (!selectedGalleryImage && !previewVariant && activeImage === image)}
+                      onClick={() => updateSelection({ galleryImage: image, added: false, error: '' })}
+                      aria-label={`Select product image ${images.indexOf(image) + 1}`}
+                      aria-current={activeImage === image}
                       className={`size-20 shrink-0 overflow-hidden rounded-xl border-2 transition ${
-                        (selectedGalleryImage === image || (!selectedGalleryImage && !previewVariant && activeImage === image)) ? 'border-[#E67E22]' : 'border-transparent'
+                        (activeImage === image) ? 'border-[#E67E22]' : 'border-transparent'
                       }`}
                     >
                       <img src={image} alt="" className="h-full w-full object-cover" />
@@ -157,54 +123,7 @@ export function ProductDetailsPage() {
                   ))}
                 </div>
               )}
-              {variants.length > 0 && (
-                <div className="mt-6">
-                  <p className="mb-1 text-xs font-semibold uppercase tracking-[0.18em] text-[#6B7280]">Available colors</p>
-                  <p className="mb-3 text-xs text-[#6B7280]">Optional: select other colors. Without a selection, the main product will be added. The quantity below applies to each selected color.</p>
-                  <div className="flex flex-wrap gap-3">
-                    {variants.map((variant) => {
-                      const isSelected = selectedVariantIds.includes(variant.variantId)
-                      const unavailable = !isVariantAvailable(variant)
-                      return (
-                        <button
-                          key={variant.variantId}
-                          type="button"
-                          disabled={unavailable}
-                          onClick={() => {
-                            updateSelection({
-                              variantIds: isSelected
-                                ? selectedVariantIds.filter((variantId) => variantId !== variant.variantId)
-                                : [...selectedVariantIds, variant.variantId],
-                              previewVariantId: variant.variantId,
-                              galleryImage: '',
-                              error: '',
-                            })
-                          }}
-                          aria-pressed={isSelected}
-                          aria-label={`${variant.colorName}${unavailable ? ' (unavailable)' : ''}`}
-                          className={`flex items-center gap-2 rounded-xl border-2 p-1.5 pr-3 text-left transition ${
-                            isSelected ? 'border-[#E67E22] bg-[#E67E22]/5' : 'border-[#E5E7EB]'
-                          } ${unavailable ? 'cursor-not-allowed opacity-40' : 'hover:border-[#E67E22]/60'}`}
-                        >
-                          {variant.image?.url ? (
-                            <img src={variant.image.url} alt="" className="size-12 rounded-lg object-cover" />
-                          ) : (
-                            <span className="grid size-12 place-items-center rounded-lg bg-stone-100 text-[10px] text-[#6B7280]">No image</span>
-                          )}
-                          <span className="text-sm font-medium text-[#111827]">
-                            {variant.colorName}{unavailable ? ' · Unavailable' : ''}
-                          </span>
-                        </button>
-                      )
-                    })}
-                  </div>
-                  {selectedVariantIds.length > 0 && (
-                    <p className="mt-2 text-xs text-[#6B7280]">
-                      {selectedVariantIds.length} color{selectedVariantIds.length === 1 ? '' : 's'} selected
-                    </p>
-                  )}
-                </div>
-              )}
+              <p className="mt-4 text-sm text-[#6B7280]">Choose an image, then add the pictured item to your cart.</p>
             </section>
 
             {/* Details */}
@@ -270,7 +189,7 @@ export function ProductDetailsPage() {
                 <button
                   type="button"
                   onClick={handleAddToCart}
-                  disabled={adding || isUpdating || (variants.length > 0 && !variants.some(isVariantAvailable))}
+                  disabled={adding || isUpdating}
                   className="flex h-12 flex-1 items-center justify-center gap-2 rounded-full bg-[#1F2937] px-6 py-6 text-sm font-semibold text-white transition hover:bg-[#E67E22] disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   {adding || isUpdating ? 'Adding…' : added ? (

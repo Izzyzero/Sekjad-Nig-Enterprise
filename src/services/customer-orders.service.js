@@ -27,7 +27,7 @@ export const normalizeCustomerOrder = (order) => ({
     colorName: item.colorName ?? null,
     quantity: Number(item.quantity ?? 1),
     price: Number(item.unitAmount ?? 0) / 100,
-    image: imageOf(item.variantImageUrl ?? item.imageUrl),
+    image: imageOf(item.selectedImage ?? item.variantImageUrl ?? item.imageUrl),
   })),
 })
 

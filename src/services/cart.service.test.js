@@ -154,3 +154,30 @@ test('products without variants omit variantId and saved cart selections reload 
     setAccessToken(null)
   }
 })
+
+
+test('gallery selection is submitted without a color variant and survives cart reload', async () => {
+  const previousAdapter = api.defaults.adapter
+  const requests = []
+  setAccessToken('gallery-test-token')
+  api.defaults.adapter = async (config) => {
+    requests.push(config)
+    return cartResponse(config, [{
+      cartItemId: 'gallery-line', productId: 'fabric-1', selectedImage: 'gallery-2.jpg',
+      quantity: 2, price: 1250, product: { title: 'Fabric', image: 'main.jpg' },
+    }], 2500)
+  }
+  try {
+    await cartService.addItem({ productId: 'fabric-1', selectedImage: 'gallery-2.jpg', quantity: 2 })
+    assert.deepEqual(JSON.parse(requests[0].data), {
+      productId: 'fabric-1', selectedImage: 'gallery-2.jpg', quantity: 2,
+    })
+    const cart = await cartService.get()
+    assert.equal(cart.items[0].image, 'gallery-2.jpg')
+    assert.equal(cart.items[0].variantId, null)
+    assert.equal(cart.subtotal, 2500)
+  } finally {
+    api.defaults.adapter = previousAdapter
+    setAccessToken(null)
+  }
+})
